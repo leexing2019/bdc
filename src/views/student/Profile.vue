@@ -1,0 +1,207 @@
+<template>
+  <div class="space-y-6 pb-20 lg:pb-0">
+    <!-- Header -->
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800">个人中心</h1>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <div class="flex items-center space-x-4">
+        <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+          <span class="text-2xl font-bold text-primary-700">
+            {{ authStore.user?.username?.charAt(0).toUpperCase() }}
+          </span>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold text-gray-800">{{ authStore.user?.username }}</h2>
+          <p class="text-gray-500">学生账号</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-primary-600">{{ wordStore.proficiencyStats.new + wordStore.proficiencyStats.learning + wordStore.proficiencyStats.familiar + wordStore.proficiencyStats.mastered }}</p>
+        <p class="text-sm text-gray-500">总单词数</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-green-600">{{ wordStore.proficiencyStats.mastered }}</p>
+        <p class="text-sm text-gray-500">已掌握</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-blue-600">{{ wordStore.proficiencyStats.familiar }}</p>
+        <p class="text-sm text-gray-500">熟悉</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-orange-600">{{ wordStore.proficiencyStats.learning }}</p>
+        <p class="text-sm text-gray-500">学习中</p>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="bg-white rounded-xl shadow-sm">
+      <div class="p-4 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-800">学习设置</h3>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <div class="p-4 flex items-center justify-between">
+          <div>
+            <p class="font-medium text-gray-800">每日新词数量</p>
+            <p class="text-sm text-gray-500">每天学习的新单词上限</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="updateDailyLimit(Math.max(5, (authStore.user?.daily_limit || 20) - 5))"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+            >
+              -
+            </button>
+            <span class="w-12 text-center font-medium">{{ authStore.user?.daily_limit || 20 }}</span>
+            <button
+              @click="updateDailyLimit(Math.min(50, (authStore.user?.daily_limit || 20) + 5))"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Change -->
+    <div class="bg-white rounded-xl shadow-sm">
+      <div class="p-4 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-800">修改密码</h3>
+      </div>
+      <div class="p-4 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">当前密码</label>
+          <input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            placeholder="请输入当前密码"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+          <input
+            v-model="passwordForm.newPassword"
+            type="password"
+            class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            placeholder="请输入新密码"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+          <input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            placeholder="请再次输入新密码"
+          />
+        </div>
+        <div v-if="passwordError" class="text-red-500 text-sm">{{ passwordError }}</div>
+        <div v-if="passwordSuccess" class="text-green-600 text-sm">{{ passwordSuccess }}</div>
+        <button
+          @click="changePassword"
+          :disabled="passwordLoading"
+          class="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+        >
+          {{ passwordLoading ? '修改中...' : '修改密码' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <button
+      @click="handleLogout"
+      class="w-full py-3 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition"
+    >
+      退出登录
+    </button>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useWordStore } from '@/stores/words'
+import { supabase } from '@/lib/supabase'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const wordStore = useWordStore()
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordError = ref('')
+const passwordSuccess = ref('')
+const passwordLoading = ref(false)
+
+const updateDailyLimit = async (newLimit) => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ daily_limit: newLimit })
+      .eq('id', authStore.user.id)
+
+    if (!error) {
+      authStore.user.daily_limit = newLimit
+      localStorage.setItem('smartmemo_user', JSON.stringify(authStore.user))
+    }
+  } catch (error) {
+    console.error('Update daily limit error:', error)
+  }
+}
+
+const changePassword = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+
+  if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+    passwordError.value = '请填写所有字段'
+    return
+  }
+
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    passwordError.value = '两次输入的密码不一致'
+    return
+  }
+
+  if (passwordForm.newPassword.length < 6) {
+    passwordError.value = '密码长度至少6位'
+    return
+  }
+
+  passwordLoading.value = true
+
+  try {
+    const result = await authStore.updatePassword(passwordForm.oldPassword, passwordForm.newPassword)
+    
+    if (result.success) {
+      passwordSuccess.value = '密码修改成功'
+      passwordForm.oldPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+    } else {
+      passwordError.value = result.error
+    }
+  } catch (error) {
+    passwordError.value = '修改密码失败'
+  } finally {
+    passwordLoading.value = false
+  }
+}
+
+const handleLogout = async () => {
+  await authStore.logout()
+  router.push('/login')
+}
+</script>
