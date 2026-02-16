@@ -3,16 +3,11 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-bold text-gray-800">单词背诵</h1>
+      <!-- 模式指示器 -->
       <div class="flex items-center space-x-2">
-        <select
-          v-model="studyMode"
-          class="px-3 py-1 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        >
-          <option value="recall">识记模式</option>
-          <option value="dictation">默写模式</option>
-          <option value="pos">词性选择</option>
-          <option value="cloze">填空模式</option>
-        </select>
+        <span class="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
+          {{ modeLabel }}
+        </span>
       </div>
     </div>
 
@@ -279,6 +274,24 @@ const studyMode = ref('recall')
 const currentIndex = ref(0)
 const showAnswer = ref(false)
 
+// 所有模式列表
+const modes = ['recall', 'dictation', 'pos', 'cloze']
+const modeLabels = {
+  recall: '识记模式',
+  dictation: '默写模式',
+  pos: '词性选择',
+  cloze: '填空模式'
+}
+
+// 当前模式标签
+const modeLabel = computed(() => modeLabels[studyMode.value])
+
+// 随机选择模式
+const randomMode = () => {
+  const randomIndex = Math.floor(Math.random() * modes.length)
+  studyMode.value = modes[randomIndex]
+}
+
 // Dictation mode
 const dictationAnswer = ref('')
 const dictationResult = ref(null)
@@ -304,12 +317,40 @@ const progressPercent = computed(() => {
 })
 
 const clozeSentence = computed(() => {
-  if (!currentWord.value?.example_sentence) {
-    return 'No example sentence available'
+  // 如果有例句，使用例句
+  if (currentWord.value?.example_sentence) {
+    const word = currentWord.value.spelling
+    const regex = new RegExp(word, 'gi')
+    return currentWord.value.example_sentence.replace(regex, '______')
   }
-  const word = currentWord.value.spelling
-  const regex = new RegExp(word, 'gi')
-  return currentWord.value.example_sentence.replace(regex, '______')
+  
+  // 如果没有例句，根据词性自动生成例句
+  const word = currentWord.value?.spelling || ''
+  const pos = currentWord.value?.part_of_speech || ''
+  const meaning = currentWord.value?.meaning || ''
+  
+  // 根据词性生成不同的例句模板
+  const templates = {
+    'n.': `The ${word} is very important in our daily life.`,
+    'v.': `I want to ${word} this problem tomorrow.`,
+    'adj.': `This is a very ${word} decision for us.`,
+    'adv.': `She works very ${word} every day.`,
+    'pron.': ` ${word} is my best friend.`,
+    'prep.': `The book is ${word} the table.`,
+    'conj.': `I will go ${word} it rains.`,
+    'num.': `I have ${word} apples.`,
+    'interj.': ` ${word}! That's amazing!`
+  }
+  
+  // 尝试匹配词性生成例句
+  for (const [key, template] of Object.entries(templates)) {
+    if (pos.includes(key)) {
+      return template
+    }
+  }
+  
+  // 默认例句
+  return `The word "${word}" means "${meaning}".`
 })
 
 const playPronunciation = () => {
@@ -326,6 +367,8 @@ const handleResponse = async (quality) => {
   resetState()
   currentIndex.value++
   checkCompleted()
+  // 切换到下一个单词时随机选择模式
+  randomMode()
 }
 
 const checkDictation = () => {
@@ -382,6 +425,8 @@ const nextWord = () => {
   resetState()
   currentIndex.value++
   checkCompleted()
+  // 切换到下一个单词时随机选择模式
+  randomMode()
 }
 
 const resetState = () => {
@@ -404,5 +449,7 @@ onMounted(async () => {
   if (wordStore.todayWords.length === 0) {
     await wordStore.fetchTodayWords()
   }
+  // 初始随机选择模式
+  randomMode()
 })
 </script>
