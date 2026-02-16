@@ -166,12 +166,12 @@
           <h2 class="text-4xl font-bold text-gray-800 mb-6">{{ currentWord?.spelling }}</h2>
           <p class="text-xl text-gray-600 mb-8">{{ currentWord?.meaning }}</p>
           
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               v-for="pos in posOptions"
               :key="pos.value"
               @click="checkPOS(pos.value)"
-              class="p-4 rounded-xl border-2 transition text-lg font-medium"
+              class="p-2 sm:p-4 rounded-xl border-2 transition text-sm sm:text-lg font-medium"
               :class="getPOSButtonClass(pos.value)"
               :disabled="posResult !== null"
             >
@@ -296,12 +296,16 @@ const randomMode = () => {
 const dictationAnswer = ref('')
 const dictationResult = ref(null)
 
-// POS mode
+// POS mode - 扩展词性选项
 const posOptions = [
   { value: 'n.', label: '名词 (n.)' },
   { value: 'v.', label: '动词 (v.)' },
   { value: 'adj.', label: '形容词 (adj.)' },
-  { value: 'adv.', label: '副词 (adv.)' }
+  { value: 'adv.', label: '副词 (adv.)' },
+  { value: 'prep.', label: '介词 (prep.)' },
+  { value: 'pron.', label: '代词 (pron.)' },
+  { value: 'conj.', label: '连词 (conj.)' },
+  { value: 'num.', label: '数词 (num.)' }
 ]
 const posResult = ref(null)
 
@@ -317,29 +321,29 @@ const progressPercent = computed(() => {
 })
 
 const clozeSentence = computed(() => {
-  // 如果有例句，使用例句
+  const word = currentWord.value?.spelling || ''
+  
+  // 如果有例句，使用例句并将单词替换为空白
   if (currentWord.value?.example_sentence) {
-    const word = currentWord.value.spelling
     const regex = new RegExp(word, 'gi')
     return currentWord.value.example_sentence.replace(regex, '______')
   }
   
   // 如果没有例句，根据词性自动生成例句
-  const word = currentWord.value?.spelling || ''
   const pos = currentWord.value?.part_of_speech || ''
   const meaning = currentWord.value?.meaning || ''
   
-  // 根据词性生成不同的例句模板
+  // 根据词性生成不同的例句模板（单词用______代替）
   const templates = {
-    'n.': `The ${word} is very important in our daily life.`,
-    'v.': `I want to ${word} this problem tomorrow.`,
-    'adj.': `This is a very ${word} decision for us.`,
-    'adv.': `She works very ${word} every day.`,
-    'pron.': ` ${word} is my best friend.`,
-    'prep.': `The book is ${word} the table.`,
-    'conj.': `I will go ${word} it rains.`,
-    'num.': `I have ${word} apples.`,
-    'interj.': ` ${word}! That's amazing!`
+    'n.': `The ______ is very important in our daily life.`,
+    'v.': `I want to ______ this problem tomorrow.`,
+    'adj.': `This is a very ______ decision for us.`,
+    'adv.': `She works very ______ every day.`,
+    'pron.': `______ is my best friend.`,
+    'prep.': `The book is ______ the table.`,
+    'conj.': `I will go ______ it rains.`,
+    'num.': `I have ______ apples.`,
+    'interj.': `______! That's amazing!`
   }
   
   // 尝试匹配词性生成例句
@@ -350,7 +354,7 @@ const clozeSentence = computed(() => {
   }
   
   // 默认例句
-  return `The word "${word}" means "${meaning}".`
+  return `The word "______" means "${meaning}".`
 })
 
 const playPronunciation = () => {
@@ -377,23 +381,14 @@ const checkDictation = () => {
   const correct = dictationAnswer.value.trim().toLowerCase() === currentWord.value.spelling.toLowerCase()
   dictationResult.value = correct
   
-  // Auto advance after delay
-  setTimeout(() => {
-    if (correct) {
-      handleResponse(5) // Correct = know it well
-    } else {
-      handleResponse(1) // Wrong = don't know
-    }
-  }, 1500)
+  // 不自动跳转，等待用户点击"下一个"按钮
 }
 
 const checkPOS = (selectedPOS) => {
   const correct = selectedPOS === currentWord.value.part_of_speech
   posResult.value = correct
   
-  if (correct) {
-    handleResponse(5)
-  }
+  // 不自动跳转，等待用户点击"下一个"按钮
 }
 
 const checkCloze = () => {
@@ -402,13 +397,7 @@ const checkCloze = () => {
   const correct = clozeAnswer.value.trim().toLowerCase() === currentWord.value.spelling.toLowerCase()
   clozeResult.value = correct
   
-  setTimeout(() => {
-    if (correct) {
-      handleResponse(5)
-    } else {
-      handleResponse(1)
-    }
-  }, 1500)
+  // 不自动跳转，等待用户点击"下一个"按钮
 }
 
 const getPOSButtonClass = (pos) => {
@@ -421,7 +410,17 @@ const getPOSButtonClass = (pos) => {
   return 'border-gray-200 opacity-50'
 }
 
-const nextWord = () => {
+const nextWord = async () => {
+  // 根据答题结果提交复习记录
+  let quality = 3 // 默认模糊
+  if (dictationResult.value === true || posResult.value === true || clozeResult.value === true) {
+    quality = 5 // 正确
+  } else if (dictationResult.value === false || posResult.value === false || clozeResult.value === false) {
+    quality = 1 // 错误
+  }
+  
+  await wordStore.submitReview(quality)
+  
   resetState()
   currentIndex.value++
   checkCompleted()

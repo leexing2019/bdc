@@ -57,6 +57,14 @@
               <span class="px-2 py-0.5 rounded" :class="getProficiencyClass(word)">
                 {{ getProficiencyLabel(word) }}
               </span>
+              <!-- 来源标签 -->
+              <span 
+                v-if="word.source" 
+                class="px-2 py-0.5 rounded"
+                :class="word.source === 'institution' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+              >
+                {{ word.source === 'institution' ? '机构添加' : '自主添加' }}
+              </span>
             </div>
           </div>
           <button
@@ -110,6 +118,16 @@
             <h3 class="text-sm font-medium text-gray-500 mb-1">掌握程度</h3>
             <span class="px-3 py-1 rounded-full text-sm" :class="getProficiencyClass(selectedWord)">
               {{ getProficiencyLabel(selectedWord) }}
+            </span>
+          </div>
+          <!-- 来源 -->
+          <div v-if="selectedWord.source">
+            <h3 class="text-sm font-medium text-gray-500 mb-1">来源</h3>
+            <span 
+              class="px-3 py-1 rounded-full text-sm"
+              :class="selectedWord.source === 'institution' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+            >
+              {{ selectedWord.source === 'institution' ? '机构添加' : '自主添加' }}
             </span>
           </div>
         </div>

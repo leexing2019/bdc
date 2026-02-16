@@ -34,17 +34,26 @@
         <p class="text-sm text-gray-500">总词汇量</p>
         <p class="text-2xl font-bold text-gray-800">{{ words.length }}</p>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm">
-        <p class="text-sm text-gray-500">CET-4</p>
-        <p class="text-2xl font-bold text-blue-600">{{ getCategoryCount('CET-4') }}</p>
+      <div 
+        v-for="(cat, index) in categories" 
+        :key="cat" 
+        class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:ring-2 hover:ring-primary-500 transition"
+        :class="filterCategory === cat ? 'ring-2 ring-primary-500' : ''"
+        @click="filterCategory = filterCategory === cat ? 'all' : cat"
+      >
+        <p class="text-sm text-gray-500">{{ cat }}</p>
+        <p class="text-2xl font-bold" :class="index === 0 ? 'text-blue-600' : index === 1 ? 'text-green-600' : 'text-purple-600'">{{ getCategoryCount(cat) }}</p>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm">
-        <p class="text-sm text-gray-500">CET-6</p>
-        <p class="text-2xl font-bold text-green-600">{{ getCategoryCount('CET-6') }}</p>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm">
-        <p class="text-sm text-gray-500">自定义</p>
-        <p class="text-2xl font-bold text-purple-600">{{ getCategoryCount('custom') }}</p>
+      <div class="bg-white rounded-xl p-4 shadow-sm flex items-center justify-center">
+        <button
+          @click="showCategoryModal = true"
+          class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          新建词库
+        </button>
       </div>
     </div>
 
@@ -67,9 +76,7 @@
           class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
         >
           <option value="all">全部分类</option>
-          <option value="CET-4">CET-4</option>
-          <option value="CET-6">CET-6</option>
-          <option value="custom">自定义</option>
+          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
         <button
           @click="showAddWordModal = true"
@@ -217,6 +224,17 @@
       <div class="bg-white rounded-2xl max-w-lg w-full p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">批量导入单词</h3>
         
+        <!-- 词库选择 -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">选择词库</label>
+          <select
+            v-model="importCategory"
+            class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          >
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          </select>
+        </div>
+        
         <div
           class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-500 transition cursor-pointer"
           @click="triggerFileInput"
@@ -224,15 +242,15 @@
           <input
             ref="fileInput"
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.txt"
             class="hidden"
             @change="handleFileSelect"
           />
           <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <p class="text-gray-600">点击上传 Excel 文件</p>
-          <p class="text-sm text-gray-400 mt-1">支持 .xlsx, .xls 格式</p>
+          <p class="text-gray-600">点击上传文件</p>
+          <p class="text-sm text-gray-400 mt-1">支持 .xlsx, .xls, .txt 格式</p>
         </div>
 
         <div v-if="importWords.length" class="mt-4">
@@ -274,6 +292,69 @@
         </div>
       </div>
     </div>
+
+    <!-- New Category Modal -->
+    <div v-if="showCategoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">新建词库</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">词库名称</label>
+            <input
+              v-model="newCategory"
+              type="text"
+              placeholder="例如：考研词汇、雅思词汇"
+              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">批量上传单词</label>
+            <div
+              class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-primary-500 transition cursor-pointer"
+              @click="triggerImportFileInput"
+            >
+              <input
+                ref="importFileInput"
+                type="file"
+                accept=".xlsx,.xls,.txt"
+                class="hidden"
+                @change="handleImportFileSelect"
+              />
+              <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p class="text-sm text-gray-600">点击上传文件</p>
+              <p class="text-xs text-gray-400 mt-1">支持 .xlsx, .xls, .txt 格式</p>
+            </div>
+          </div>
+
+          <div v-if="importWords.length" class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
+            <p class="text-sm text-gray-500 mb-2">已解析 {{ importWords.length }} 个单词</p>
+            <div class="text-xs text-gray-400">
+              {{ importWords.slice(0, 5).map(w => w.spelling).join(', ') }}{{ importWords.length > 5 ? '...' : '' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex space-x-3">
+          <button
+            @click="showCategoryModal = false; newCategory = ''; importWords = []"
+            class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+          >
+            取消
+          </button>
+          <button
+            @click="createCategory"
+            :disabled="!newCategory.trim() || importing"
+            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+          >
+            {{ importing ? '创建中...' : '创建词库' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -287,11 +368,34 @@ const searchQuery = ref('')
 const filterCategory = ref('all')
 const showAddWordModal = ref(false)
 const showImportModal = ref(false)
+const showCategoryModal = ref(false)
 const editingWord = ref(null)
 const saving = ref(false)
 const importing = ref(false)
 const importWords = ref([])
+const importCategory = ref('CET-4')
 const fileInput = ref(null)
+const importFileInput = ref(null)
+
+// 新词库表单
+const newCategory = ref('')
+
+// 动态词库列表（默认包含基础词库）
+const categories = ref(['CET-4', 'CET-6', 'custom'])
+
+// 从数据库加载词库分类
+const loadCategories = async () => {
+  const { data } = await supabase
+    .from('words')
+    .select('category')
+  
+  if (data) {
+    const uniqueCategories = [...new Set(data.map(w => w.category).filter(c => c))]
+    // 合并默认分类和数据库中的分类
+    const defaultCategories = ['CET-4', 'CET-6', 'custom']
+    categories.value = [...new Set([...defaultCategories, ...uniqueCategories])]
+  }
+}
 
 const wordForm = ref({
   spelling: '',
@@ -317,11 +421,11 @@ const getCategoryCount = (category) => {
 
 const getCategoryClass = (category) => {
   const classes = {
-    'CET-4': 'bg-blue-100 text-blue-700',
-    'CET-6': 'bg-green-100 text-green-700',
-    'custom': 'bg-purple-100 text-purple-700'
+    'CET-4': 'text-blue-600',
+    'CET-6': 'text-green-600',
+    'custom': 'text-purple-600'
   }
-  return classes[category] || 'bg-gray-100 text-gray-700'
+  return classes[category] || 'text-gray-600'
 }
 
 const fetchWords = async () => {
@@ -332,6 +436,8 @@ const fetchWords = async () => {
 
   if (!error) {
     words.value = data || []
+    // 加载完单词后也加载词库分类
+    await loadCategories()
   }
 }
 
@@ -364,15 +470,18 @@ const closeWordModal = () => {
 const saveWord = async () => {
   saving.value = true
   try {
+    // 管理员添加的单词标记来源为机构
+    const wordData = { ...wordForm.value, source: 'institution' }
+    
     if (editingWord.value) {
       await supabase
         .from('words')
-        .update(wordForm.value)
+        .update(wordData)
         .eq('id', editingWord.value.id)
     } else {
       await supabase
         .from('words')
-        .insert(wordForm.value)
+        .insert(wordData)
     }
     
     await fetchWords()
@@ -416,35 +525,79 @@ const handleFileSelect = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
+  const extension = file.name.split('.').pop().toLowerCase()
+  
   try {
-    const data = await file.arrayBuffer()
-    const workbook = XLSX.read(data)
-    const sheetName = workbook.SheetNames[0]
-    const sheet = workbook.Sheets[sheetName]
-    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+    // TXT文件处理
+    if (extension === 'txt') {
+      const text = await file.text()
+      const parsed = parseTxtFile(text)
+      importWords.value = parsed
+    } else {
+      // Excel文件处理
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 })
 
-    const parsed = []
-    const startIndex = json[0] && json[0][0] === '英文' ? 1 : 0
+      const parsed = []
+      const startIndex = json[0] && json[0][0] === '英文' ? 1 : 0
 
-    for (let i = startIndex; i < json.length; i++) {
-      const row = json[i]
-      if (row && row[0]) {
-        parsed.push({
-          spelling: String(row[0]).trim(),
-          part_of_speech: row[1] ? String(row[1]).trim() : '',
-          meaning: row[2] ? String(row[2]).trim() : '',
-          phonetic: row[3] ? String(row[3]).trim() : '',
-          example_sentence: row[4] ? String(row[4]).trim() : '',
-          category: 'CET-4'
-        })
+      for (let i = startIndex; i < json.length; i++) {
+        const row = json[i]
+        if (row && row[0]) {
+          parsed.push({
+            spelling: String(row[0]).trim(),
+            part_of_speech: row[1] ? String(row[1]).trim() : '',
+            meaning: row[2] ? String(row[2]).trim() : '',
+            phonetic: row[3] ? String(row[3]).trim() : '',
+            example_sentence: row[4] ? String(row[4]).trim() : '',
+            category: 'CET-4',
+            source: 'institution'
+          })
+        }
       }
-    }
 
-    importWords.value = parsed
+      importWords.value = parsed
+    }
   } catch (error) {
     console.error('File parse error:', error)
     alert('文件解析失败')
   }
+}
+
+// 解析TXT文件
+const parseTxtFile = (text) => {
+  const lines = text.split('\n').filter(line => line.trim())
+  const words = []
+  
+  for (const line of lines) {
+    const parts = line.split('|')
+    if (parts.length >= 3) {
+      words.push({
+        spelling: parts[0].trim(),
+        part_of_speech: parts[1].trim(),
+        meaning: parts.slice(2).join('|').trim(),
+        phonetic: '',
+        example_sentence: '',
+        category: 'CET-4',
+        source: 'institution'
+      })
+    } else if (parts.length === 2) {
+      words.push({
+        spelling: parts[0].trim(),
+        part_of_speech: '',
+        meaning: parts[1].trim(),
+        phonetic: '',
+        example_sentence: '',
+        category: 'CET-4',
+        source: 'institution'
+      })
+    }
+  }
+  
+  return words
 }
 
 const importWordsToDb = async () => {
@@ -453,7 +606,7 @@ const importWordsToDb = async () => {
     for (const word of importWords.value) {
       await supabase
         .from('words')
-        .insert(word)
+        .insert({ ...word, category: importCategory.value, source: 'institution' })
     }
     
     await fetchWords()
@@ -465,6 +618,114 @@ const importWordsToDb = async () => {
     alert('导入失败，请重试')
   } finally {
     importing.value = false
+  }
+}
+
+// 新建词库
+const createCategory = async () => {
+  const categoryName = newCategory.value.trim()
+  if (!categoryName) {
+    alert('请输入词库名称')
+    return
+  }
+  
+  // 检查是否已存在
+  if (categories.value.includes(categoryName)) {
+    alert('该词库已存在')
+    return
+  }
+  
+  importing.value = true
+  try {
+    // 如果有导入的单词，导入到新词库
+    if (importWords.value.length > 0) {
+      for (const word of importWords.value) {
+        await supabase
+          .from('words')
+          .insert({
+            ...word,
+            category: categoryName,
+            source: 'institution'
+          })
+      }
+    } else {
+      // 如果没有导入单词，创建一个占位单词以确保词库分类被保存
+      await supabase
+        .from('words')
+        .insert({
+          spelling: `[${categoryName}]`,
+          part_of_speech: '',
+          meaning: categoryName + ' 词库',
+          category: categoryName,
+          source: 'institution'
+        })
+    }
+    
+    // 刷新单词列表和分类
+    await fetchWords()
+    
+    // 刷新分类下拉选项
+    filterCategory.value = categoryName
+    
+    showCategoryModal.value = false
+    newCategory.value = ''
+    importWords.value = []
+    alert('词库创建成功！')
+  } catch (error) {
+    console.error('Create category error:', error)
+    alert('创建失败，请重试')
+  } finally {
+    importing.value = false
+  }
+}
+
+// 触发新建词库的文件选择
+const triggerImportFileInput = () => {
+  importFileInput.value?.click()
+}
+
+// 处理新建词库时的文件选择
+const handleImportFileSelect = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const extension = file.name.split('.').pop().toLowerCase()
+  
+  try {
+    // TXT文件处理
+    if (extension === 'txt') {
+      const text = await file.text()
+      const parsed = parseTxtFile(text)
+      importWords.value = parsed
+    } else {
+      // Excel文件处理
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+
+      const parsed = []
+      const startIndex = json[0] && json[0][0] === '英文' ? 1 : 0
+
+      for (let i = startIndex; i < json.length; i++) {
+        const row = json[i]
+        if (row && row[0]) {
+          parsed.push({
+            spelling: String(row[0]).trim(),
+            part_of_speech: row[1] ? String(row[1]).trim() : '',
+            meaning: row[2] ? String(row[2]).trim() : '',
+            phonetic: row[3] ? String(row[3]).trim() : '',
+            example_sentence: row[4] ? String(row[4]).trim() : ''
+          })
+        }
+      }
+
+      importWords.value = parsed
+    }
+  } catch (error) {
+    console.error('File parse error:', error)
+    alert('文件解析失败')
   }
 }
 

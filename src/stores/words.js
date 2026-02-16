@@ -308,14 +308,16 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return
 
     try {
+      // 直接添加到words表（用户自定义单词），标记来源为自主添加
       const { error } = await supabase
-        .from('user_custom_words')
+        .from('words')
         .insert({
-          user_id: authStore.user.id,
           spelling: wordData.spelling,
           part_of_speech: wordData.partOfSpeech,
           meaning: wordData.meaning,
-          status: 'pending'
+          category: 'custom',
+          source: 'user', // 标记为用户自主添加
+          created_by: authStore.user.id
         })
 
       if (error) throw error
