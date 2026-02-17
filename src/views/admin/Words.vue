@@ -561,19 +561,27 @@ const fetchWordInfo = async () => {
   try {
     const data = await fetchWordData(wordForm.value.spelling)
     
-    if (data.definition) {
-      // 自动填充释义（如果为空）
-      if (!wordForm.value.meaning) {
-        wordForm.value.meaning = data.definition
-      }
-    }
-    
+    // 音标填充到音标字段
     if (data.phonetic && !wordForm.value.phonetic) {
       wordForm.value.phonetic = data.phonetic
     }
     
-    if (data.example && !wordForm.value.example_sentence) {
-      wordForm.value.example_sentence = data.example
+    // 英文释义和例句填充到例句字段
+    if (data.definition || data.example) {
+      let exampleText = ''
+      if (data.example) {
+        exampleText = data.example
+      }
+      if (data.definition) {
+        // 如果有例句，格式为：例句 (释义)
+        // 如果没有例句，只显示释义
+        exampleText = exampleText ? `${exampleText} (${data.definition})` : data.definition
+      }
+      
+      // 只有当例句字段为空时才填充
+      if (!wordForm.value.example_sentence && exampleText) {
+        wordForm.value.example_sentence = exampleText
+      }
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
@@ -777,17 +785,28 @@ const importWordsToDb = async () => {
     for (let i = 0; i < total; i++) {
       const word = importWords.value[i]
       
-      // 如果没有例句，自动获取
+      // 如果没有例句或音标，自动获取
       let exampleSentence = word.example_sentence
       let phonetic = word.phonetic
       
       if (!exampleSentence || !phonetic) {
         const data = await fetchWordData(word.spelling)
-        if (!exampleSentence && data.example) {
-          exampleSentence = data.example
-        }
+        
+        // 获取音标
         if (!phonetic && data.phonetic) {
           phonetic = data.phonetic
+        }
+        
+        // 获取例句（英文释义+例句）
+        if (!exampleSentence && (data.example || data.definition)) {
+          let text = ''
+          if (data.example) {
+            text = data.example
+          }
+          if (data.definition) {
+            text = text ? `${text} (${data.definition})` : data.definition
+          }
+          exampleSentence = text
         }
       }
       
@@ -974,11 +993,22 @@ const batchUpdateExamples = async () => {
       const data = await fetchWordData(word.spelling)
       
       const updateData = {}
-      if (!word.example_sentence && data.example) {
-        updateData.example_sentence = data.example
-      }
+      
+      // 获取音标
       if (!word.phonetic && data.phonetic) {
         updateData.phonetic = data.phonetic
+      }
+      
+      // 获取例句（英文释义+例句）
+      if (!word.example_sentence && (data.example || data.definition)) {
+        let text = ''
+        if (data.example) {
+          text = data.example
+        }
+        if (data.definition) {
+          text = text ? `${text} (${data.definition})` : data.definition
+        }
+        updateData.example_sentence = text
       }
       
       if (Object.keys(updateData).length > 0) {
