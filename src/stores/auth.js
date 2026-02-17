@@ -78,6 +78,31 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('smartmemo_user')
   }
 
+  async function refreshUser() {
+    if (!user.value) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.value.id)
+        .single()
+
+      if (error || !data) return
+
+      user.value = {
+        id: data.id,
+        username: data.username,
+        role: data.role,
+        daily_limit: data.daily_limit
+      }
+
+      localStorage.setItem('smartmemo_user', JSON.stringify(user.value))
+    } catch (error) {
+      console.error('Refresh user error:', error)
+    }
+  }
+
   async function updatePassword(oldPassword, newPassword) {
     try {
       // Verify old password first

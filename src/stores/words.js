@@ -139,6 +139,18 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return
     
     try {
+      // Refresh user data to get latest daily_limit from database
+      await authStore.refreshUser()
+      
+      // Get user's category preference
+      const { data: userSettings } = await supabase
+        .from('user_settings')
+        .select('category')
+        .eq('user_id', authStore.user.id)
+        .maybeSingle()
+      
+      const userCategory = userSettings?.category || 'all'
+      
       const today = new Date().toISOString().split('T')[0]
       
       // Get words due for review today
@@ -162,6 +174,11 @@ export const useWordStore = defineStore('words', () => {
         .from('words')
         .select('*')
         .order('created_at', { ascending: false })
+
+      // Filter by category if user has a specific category set
+      if (userCategory && userCategory !== 'all') {
+        newWordsQuery = newWordsQuery.eq('category', userCategory)
+      }
 
       if (learnedWordIds.length > 0) {
         newWordsQuery = newWordsQuery.not('id', 'in', `(${learnedWordIds.join(',')})`)
@@ -277,7 +294,7 @@ export const useWordStore = defineStore('words', () => {
         .select('*')
         .eq('user_id', authStore.user.id)
         .eq('date', today)
-        .single()
+        .maybeSingle()
 
       if (existingLog) {
         // Update existing log
@@ -308,7 +325,7 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return
 
     try {
-      // 直接添加到words表（用户自定义单词），标记来源为自主添加
+      // 直接添加到words表（用户自定义单词）
       const { error } = await supabase
         .from('words')
         .insert({
@@ -316,7 +333,6 @@ export const useWordStore = defineStore('words', () => {
           part_of_speech: wordData.partOfSpeech,
           meaning: wordData.meaning,
           category: 'custom',
-          source: 'user', // 标记为用户自主添加
           created_by: authStore.user.id
         })
 

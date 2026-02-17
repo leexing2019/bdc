@@ -37,10 +37,19 @@
       <div 
         v-for="(cat, index) in categories" 
         :key="cat" 
-        class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:ring-2 hover:ring-primary-500 transition"
+        class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:ring-2 hover:ring-primary-500 transition relative group"
         :class="filterCategory === cat ? 'ring-2 ring-primary-500' : ''"
         @click="filterCategory = filterCategory === cat ? 'all' : cat"
       >
+        <button
+          @click.stop="deleteCategory(cat)"
+          class="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"
+          title="删除词库"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
         <p class="text-sm text-gray-500">{{ cat }}</p>
         <p class="text-2xl font-bold" :class="index === 0 ? 'text-blue-600' : index === 1 ? 'text-green-600' : 'text-purple-600'">{{ getCategoryCount(cat) }}</p>
       </div>
@@ -84,6 +93,13 @@
         >
           添加单词
         </button>
+        <button
+          v-if="selectedWords.length > 0"
+          @click="batchDeleteWords"
+          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+        >
+          删除选中 ({{ selectedWords.length }})
+        </button>
       </div>
     </div>
 
@@ -93,6 +109,14 @@
         <table class="w-full">
           <thead class="bg-gray-50">
             <tr>
+              <th class="text-left py-3 px-4 text-sm font-medium text-gray-500 w-10">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected"
+                  @change="toggleSelectAll"
+                  class="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+              </th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">单词</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">词性</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">释义</th>
@@ -102,6 +126,14 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-for="word in filteredWords" :key="word.id" class="hover:bg-gray-50">
+              <td class="py-3 px-4">
+                <input
+                  type="checkbox"
+                  :value="word.id"
+                  v-model="selectedWords"
+                  class="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+              </td>
               <td class="py-3 px-4">
                 <span class="font-medium text-gray-800">{{ word.spelling }}</span>
                 <span v-if="word.phonetic" class="ml-2 text-gray-400 text-sm">{{ word.phonetic }}</span>
@@ -377,6 +409,14 @@ const importCategory = ref('CET-4')
 const fileInput = ref(null)
 const importFileInput = ref(null)
 
+// 选中单词
+const selectedWords = ref([])
+
+// 全选状态
+const isAllSelected = computed(() => {
+  return filteredWords.value.length > 0 && selectedWords.value.length === filteredWords.value.length
+})
+
 // 新词库表单
 const newCategory = ref('')
 
@@ -385,15 +425,24 @@ const categories = ref(['CET-4', 'CET-6', 'custom'])
 
 // 从数据库加载词库分类
 const loadCategories = async () => {
-  const { data } = await supabase
-    .from('words')
-    .select('category')
-  
-  if (data) {
-    const uniqueCategories = [...new Set(data.map(w => w.category).filter(c => c))]
-    // 合并默认分类和数据库中的分类
-    const defaultCategories = ['CET-4', 'CET-6', 'custom']
-    categories.value = [...new Set([...defaultCategories, ...uniqueCategories])]
+  try {
+    const { data, error } = await supabase
+      .from('words')
+      .select('category')
+    
+    if (error) {
+      console.error('加载词库分类失败:', error)
+      return
+    }
+    
+    if (data) {
+      const uniqueCategories = [...new Set(data.map(w => w.category).filter(c => c && c.trim()))]
+      // 合并默认分类和数据库中的分类
+      const defaultCategories = ['CET-4', 'CET-6', 'custom']
+      categories.value = [...new Set([...defaultCategories, ...uniqueCategories])]
+    }
+  } catch (error) {
+    console.error('加载词库分类失败:', error)
   }
 }
 
@@ -434,11 +483,16 @@ const fetchWords = async () => {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (!error) {
-    words.value = data || []
-    // 加载完单词后也加载词库分类
-    await loadCategories()
+  if (error) {
+    console.error('获取单词列表失败:', error)
+    return
   }
+  
+  if (data) {
+    words.value = data || []
+  }
+  // 加载完单词后也加载词库分类
+  await loadCategories()
 }
 
 const editWord = (word) => {
@@ -470,18 +524,20 @@ const closeWordModal = () => {
 const saveWord = async () => {
   saving.value = true
   try {
-    // 管理员添加的单词标记来源为机构
-    const wordData = { ...wordForm.value, source: 'institution' }
+    // 管理员添加的单词
+    const wordData = { ...wordForm.value }
     
     if (editingWord.value) {
-      await supabase
+      const { error } = await supabase
         .from('words')
         .update(wordData)
         .eq('id', editingWord.value.id)
+      if (error) throw error
     } else {
-      await supabase
+      const { error } = await supabase
         .from('words')
         .insert(wordData)
+      if (error) throw error
     }
     
     await fetchWords()
@@ -502,6 +558,58 @@ const deleteWord = async (word) => {
       .eq('id', word.id)
     
     await fetchWords()
+  }
+}
+
+// 切换全选
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedWords.value = []
+  } else {
+    selectedWords.value = filteredWords.value.map(w => w.id)
+  }
+}
+
+// 批量删除选中的单词
+const batchDeleteWords = async () => {
+  if (selectedWords.value.length === 0) return
+  
+  if (confirm(`确定删除选中的 ${selectedWords.value.length} 个单词吗？`)) {
+    try {
+      for (const wordId of selectedWords.value) {
+        await supabase
+          .from('words')
+          .delete()
+          .eq('id', wordId)
+      }
+      selectedWords.value = []
+      await fetchWords()
+      alert('删除成功！')
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      alert('删除失败，请重试')
+    }
+  }
+}
+
+// 删除整个词库
+const deleteCategory = async (category) => {
+  if (!confirm(`确定删除整个词库 "${category}" 吗？这将删除该词库下的所有单词！`)) {
+    return
+  }
+  
+  try {
+    // 删除该分类下的所有单词
+    await supabase
+      .from('words')
+      .delete()
+      .eq('category', category)
+    
+    await fetchWords()
+    alert('词库删除成功！')
+  } catch (error) {
+    console.error('删除词库失败:', error)
+    alert('删除失败，请重试')
   }
 }
 
@@ -554,7 +662,6 @@ const handleFileSelect = async (event) => {
             phonetic: row[3] ? String(row[3]).trim() : '',
             example_sentence: row[4] ? String(row[4]).trim() : '',
             category: 'CET-4',
-            source: 'institution'
           })
         }
       }
@@ -581,8 +688,7 @@ const parseTxtFile = (text) => {
         meaning: parts.slice(2).join('|').trim(),
         phonetic: '',
         example_sentence: '',
-        category: 'CET-4',
-        source: 'institution'
+        category: 'CET-4'
       })
     } else if (parts.length === 2) {
       words.push({
@@ -591,8 +697,7 @@ const parseTxtFile = (text) => {
         meaning: parts[1].trim(),
         phonetic: '',
         example_sentence: '',
-        category: 'CET-4',
-        source: 'institution'
+        category: 'CET-4'
       })
     }
   }
@@ -604,9 +709,17 @@ const importWordsToDb = async () => {
   importing.value = true
   try {
     for (const word of importWords.value) {
-      await supabase
+      const { error } = await supabase
         .from('words')
-        .insert({ ...word, category: importCategory.value, source: 'institution' })
+        .insert({ 
+          spelling: word.spelling,
+          part_of_speech: word.part_of_speech || '',
+          meaning: word.meaning,
+          phonetic: word.phonetic || '',
+          example_sentence: word.example_sentence || '',
+          category: importCategory.value 
+        })
+      if (error) throw error
     }
     
     await fetchWords()
@@ -623,6 +736,7 @@ const importWordsToDb = async () => {
 
 // 新建词库
 const createCategory = async () => {
+  console.log('createCategory 函数被调用')
   const categoryName = newCategory.value.trim()
   if (!categoryName) {
     alert('请输入词库名称')
@@ -640,25 +754,43 @@ const createCategory = async () => {
     // 如果有导入的单词，导入到新词库
     if (importWords.value.length > 0) {
       for (const word of importWords.value) {
-        await supabase
+        const { error } = await supabase
           .from('words')
           .insert({
-            ...word,
+            spelling: word.spelling,
+            part_of_speech: word.part_of_speech || '',
+            meaning: word.meaning,
+            phonetic: word.phonetic || '',
+            example_sentence: word.example_sentence || '',
             category: categoryName,
-            source: 'institution'
           })
+        
+        if (error) {
+          console.error('插入单词失败:', error)
+          throw error
+        }
       }
     } else {
       // 如果没有导入单词，创建一个占位单词以确保词库分类被保存
-      await supabase
+      const insertData = {
+        spelling: categoryName + '_dict',
+        part_of_speech: '',
+        meaning: categoryName + ' Dictionary',
+        category: categoryName
+      }
+      
+      console.log('准备插入数据:', insertData)
+      
+      const { error } = await supabase
         .from('words')
-        .insert({
-          spelling: `[${categoryName}]`,
-          part_of_speech: '',
-          meaning: categoryName + ' 词库',
-          category: categoryName,
-          source: 'institution'
-        })
+        .insert(insertData)
+      
+      console.log('插入结果:', error)
+      if (error) {
+        console.error('创建词库失败:', error)
+        alert('创建失败: ' + error.message)
+        return
+      }
     }
     
     // 刷新单词列表和分类
@@ -673,7 +805,7 @@ const createCategory = async () => {
     alert('词库创建成功！')
   } catch (error) {
     console.error('Create category error:', error)
-    alert('创建失败，请重试')
+    alert('创建失败: ' + (error.message || JSON.stringify(error)))
   } finally {
     importing.value = false
   }
@@ -729,7 +861,9 @@ const handleImportFileSelect = async (event) => {
   }
 }
 
-onMounted(() => {
-  fetchWords()
+onMounted(async () => {
+  await fetchWords()
+  // 确保加载词库分类
+  await loadCategories()
 })
 </script>

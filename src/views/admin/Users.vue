@@ -109,6 +109,15 @@
               </td>
               <td class="py-3 px-4 text-right">
                 <button
+                  @click="resetPassword(user)"
+                  class="p-2 text-gray-400 hover:text-yellow-600 transition"
+                  title="重置密码"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </button>
+                <button
                   @click="editUser(user)"
                   class="p-2 text-gray-400 hover:text-primary-600 transition"
                 >
@@ -125,6 +134,15 @@
                   </svg>
                   <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                <button
+                  @click="deleteUser(user)"
+                  class="p-2 text-gray-400 hover:text-red-600 transition"
+                  title="删除用户"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
               </td>
@@ -158,16 +176,6 @@
               placeholder="请输入密码"
             />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">每日新词数量</label>
-            <input
-              v-model.number="userForm.daily_limit"
-              type="number"
-              min="5"
-              max="100"
-              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-            />
-          </div>
         </div>
 
         <div class="mt-6 flex space-x-3">
@@ -192,7 +200,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 const users = ref([])
 const studyProgress = ref({})
@@ -204,8 +212,7 @@ const saving = ref(false)
 
 const userForm = ref({
   username: '',
-  password: '',
-  daily_limit: 20
+  password: ''
 })
 
 const filteredUsers = computed(() => {
@@ -294,10 +301,8 @@ const editUser = (user) => {
   editingUser.value = user
   userForm.value = {
     username: user.username,
-    password: '',
-    daily_limit: user.daily_limit
+    password: ''
   }
-  showAddModal.value = true
 }
 
 const closeModal = () => {
@@ -305,8 +310,7 @@ const closeModal = () => {
   editingUser.value = null
   userForm.value = {
     username: '',
-    password: '',
-    daily_limit: 20
+    password: ''
   }
 }
 
@@ -316,8 +320,7 @@ const saveUser = async () => {
     if (editingUser.value) {
       // Update existing user
       const updateData = {
-        username: userForm.value.username,
-        daily_limit: userForm.value.daily_limit
+        username: userForm.value.username
       }
       if (userForm.value.password) {
         updateData.password = userForm.value.password
@@ -335,7 +338,7 @@ const saveUser = async () => {
           username: userForm.value.username,
           password: userForm.value.password,
           role: 'student',
-          daily_limit: userForm.value.daily_limit
+          daily_limit: 20
         })
     }
     
@@ -356,6 +359,68 @@ const toggleUserStatus = async (user) => {
     .eq('id', user.id)
   
   await fetchUsers()
+}
+
+const resetPassword = async (user) => {
+  const newPassword = prompt(`请输入 "${user.username}" 的新密码：`)
+  if (!newPassword || newPassword.length < 6) {
+    alert('密码长度至少6位')
+    return
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ password: newPassword })
+      .eq('id', user.id)
+    
+    if (error) throw error
+    alert('密码重置成功！')
+  } catch (error) {
+    console.error('重置密码失败:', error)
+    alert('重置密码失败，请重试')
+  }
+}
+
+const deleteUser = async (user) => {
+  if (!confirm(`确定要删除用户 "${user.username}" 吗？\n\n此操作将同时删除该用户的所有学习记录，且不可恢复！`)) {
+    return
+  }
+  
+  try {
+    // 先删除用户的学习记录
+    await supabaseAdmin
+      .from('user_word_progress')
+      .delete()
+      .eq('user_id', user.id)
+    
+    // 删除学习日志
+    await supabaseAdmin
+      .from('study_logs')
+      .delete()
+      .eq('user_id', user.id)
+    
+    // 删除自定义单词
+    await supabaseAdmin
+      .from('user_custom_words')
+      .delete()
+      .eq('user_id', user.id)
+    
+    // 最后删除用户
+    const { error } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', user.id)
+    
+    if (error) throw error
+    
+    await fetchUsers()
+    await fetchStudyProgress()
+    alert('用户删除成功！')
+  } catch (error) {
+    console.error('删除用户失败:', error)
+    alert('删除用户失败，请重试')
+  }
 }
 
 onMounted(() => {
