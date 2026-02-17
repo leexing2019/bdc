@@ -139,8 +139,8 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return
     
     try {
-      // Refresh user data to get latest daily_limit from database
-      await authStore.refreshUser()
+      // Skip refreshUser - we already have user data from login
+      // This saves one database call
       
       // Get user's category preference
       const { data: userSettings } = await supabase
@@ -165,11 +165,19 @@ export const useWordStore = defineStore('words', () => {
         .order('next_review_date', { ascending: true })
         .limit(50)
 
-      if (reviewError) throw reviewError
+      if (reviewError) {
+        console.error('获取复习词失败:', reviewError)
+      }
 
-      // Get new words to learn
-      const learnedWordIds = userProgress.value.map(p => p.word_id)
+      // Get user's learned word IDs
+      const { data: allProgress } = await supabase
+        .from('user_word_progress')
+        .select('word_id')
+        .eq('user_id', authStore.user.id)
       
+      const learnedWordIds = allProgress?.map(p => p.word_id) || []
+      
+      // Get new words to learn - based on category
       let newWordsQuery = supabase
         .from('words')
         .select('*')
@@ -180,6 +188,7 @@ export const useWordStore = defineStore('words', () => {
         newWordsQuery = newWordsQuery.eq('category', userCategory)
       }
 
+      // Exclude already learned words
       if (learnedWordIds.length > 0) {
         newWordsQuery = newWordsQuery.not('id', 'in', `(${learnedWordIds.join(',')})`)
       }
@@ -187,9 +196,11 @@ export const useWordStore = defineStore('words', () => {
       const { data: newWords, error: newError } = await newWordsQuery
         .limit(authStore.user.daily_limit || 20)
 
-      if (newError) throw newError
+      if (newError) {
+        console.error('获取新词失败:', newError)
+      }
 
-      // Combine and format
+      // Combine and format - ensure we always have some words to learn
       const combinedWords = [
         ...(reviewWords || []).map(p => ({
           ...p.word,

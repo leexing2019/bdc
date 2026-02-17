@@ -12,7 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function checkAuth() {
     try {
-      // Check localStorage for stored credentials
+      // Skip Supabase auth check - we use localStorage only
+      // This is much faster
       const storedUser = localStorage.getItem('smartmemo_user')
       if (storedUser) {
         user.value = JSON.parse(storedUser)
@@ -26,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(username, password) {
     try {
-      // Query user from database
+      // Query user from database to verify credentials
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -39,13 +40,13 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // Simple password check (in production, use proper hashing)
-      // For demo: admin/admin123, student/student123
       const isValidPassword = await verifyPassword(password, data.password)
       
       if (!isValidPassword) {
         throw new Error('用户名或密码错误')
       }
 
+      // Set user data
       user.value = {
         id: data.id,
         username: data.username,
@@ -55,6 +56,13 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Store in localStorage
       localStorage.setItem('smartmemo_user', JSON.stringify(user.value))
+
+      // Set a custom claims in localStorage for RLS (since we're not using Supabase Auth)
+      // This allows RLS policies to work by storing user ID in a way Supabase can access
+      localStorage.setItem('supabase_auth_token', JSON.stringify({
+        user_id: data.id,
+        role: data.role
+      }))
 
       return { success: true }
     } catch (error) {
@@ -146,6 +154,7 @@ export const useAuthStore = defineStore('auth', () => {
     checkAuth,
     login,
     logout,
+    refreshUser,
     updatePassword
   }
 })

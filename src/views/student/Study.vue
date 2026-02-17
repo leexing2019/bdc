@@ -2,11 +2,13 @@
   <div class="min-h-[calc(100vh-8rem)] pb-20 lg:pb-0">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">单词背诵</h1>
+      <h1 class="text-2xl font-bold text-gray-800">
+        {{ isPreviewMode ? '预习' : '单词背诵' }}
+      </h1>
       <!-- 模式指示器 -->
       <div class="flex items-center space-x-2">
         <span class="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-          {{ modeLabel }}
+          {{ isPreviewMode ? '预习模式' : modeLabel }}
         </span>
       </div>
     </div>
@@ -15,7 +17,7 @@
     <div class="w-full h-2 bg-gray-200 rounded-full mb-6">
       <div
         class="h-full bg-primary-500 rounded-full transition-all duration-300 progress-animate"
-        :style="{ width: `${progressPercent}%` }"
+        :style="{ width: isPreviewMode ? `${previewProgress}%` : `${progressPercent}%` }"
       ></div>
     </div>
 
@@ -34,6 +36,110 @@
       >
         返回主页
       </router-link>
+    </div>
+
+    <!-- Preview/Preheat Mode (Flashcard) -->
+    <div v-else-if="isPreviewMode" class="max-w-2xl mx-auto">
+      <!-- Preview Header -->
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-2">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          预习环节
+        </div>
+        <p class="text-gray-500 text-sm">快速浏览今日单词，先混个脸熟~</p>
+      </div>
+
+      <!-- Preview Progress -->
+      <div class="w-full h-2 bg-gray-200 rounded-full mb-6">
+        <div
+          class="h-full bg-amber-500 rounded-full transition-all duration-300"
+          :style="{ width: `${previewProgress}%` }"
+        ></div>
+      </div>
+
+      <!-- Preview Card -->
+      <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="text-center">
+          <div class="text-sm text-gray-400 mb-4">
+            {{ previewIndex + 1 }} / {{ wordStore.todayWords.length }}
+          </div>
+
+          <!-- Word (front of card) -->
+          <div v-if="!previewShowAnswer" class="animate-fade-in">
+            <button
+              @click="playPronunciation(previewWord?.spelling)"
+              class="w-16 h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-6 transition"
+            >
+              <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </button>
+            
+            <h2 class="text-4xl font-bold text-gray-800 mb-2">{{ previewWord?.spelling }}</h2>
+            <p v-if="previewWord?.phonetic" class="text-gray-400 mb-6">{{ previewWord?.phonetic }}</p>
+            
+            <button
+              @click="previewShowAnswer = true"
+              class="px-8 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition"
+            >
+              点击查看释义
+            </button>
+          </div>
+
+          <!-- Meaning (back of card) -->
+          <div v-else class="animate-fade-in">
+            <p class="text-lg text-gray-600 mb-2">{{ previewWord?.part_of_speech }}</p>
+            <p class="text-2xl font-semibold text-gray-800 mb-6">{{ previewWord?.meaning }}</p>
+            
+            <p v-if="previewWord?.example_sentence" class="text-sm text-gray-500 italic mb-6">
+              {{ previewWord?.example_sentence }}
+            </p>
+
+            <button
+              @click="nextPreviewWord"
+              class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            >
+              下一个
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Complete -->
+      <div v-if="isPreviewComplete" class="mt-6 text-center animate-fade-in">
+        <div class="bg-green-50 rounded-xl p-6 mb-4">
+          <svg class="w-12 h-12 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-green-700 font-medium">预习完成！</p>
+        </div>
+        
+        <button
+          @click="startStudy"
+          class="px-8 py-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-lg font-medium"
+        >
+          开始练习 →
+        </button>
+        
+        <button
+          @click="skipPreview"
+          class="block w-full mt-3 text-gray-400 hover:text-gray-600 text-sm"
+        >
+          跳过预习，直接练习
+        </button>
+      </div>
+
+      <!-- Skip Preview Button (when not complete) -->
+      <div v-else class="mt-4 text-center">
+        <button
+          @click="skipPreview"
+          class="text-gray-400 hover:text-gray-600 text-sm"
+        >
+          跳过预习，直接练习 →
+        </button>
+      </div>
     </div>
 
     <!-- Study Content -->
@@ -265,11 +371,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useWordStore } from '@/stores/words'
 
 const wordStore = useWordStore()
 
+// Preview mode states
+const isPreviewMode = ref(true)
+const previewIndex = ref(0)
+const previewShowAnswer = ref(false)
+
+// Study mode states
 const studyMode = ref('recall')
 const currentIndex = ref(0)
 const showAnswer = ref(false)
@@ -312,6 +424,62 @@ const posResult = ref(null)
 // Cloze mode
 const clozeAnswer = ref('')
 const clozeResult = ref(null)
+const clozeExample = ref('')
+
+// Fetch example sentence from Dictionary API
+const fetchClozeExample = async (word) => {
+  if (!word) return ''
+  
+  // Check cache first
+  if (exampleCache.has(word)) {
+    return exampleCache.get(word)
+  }
+  
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
+    if (!response.ok) return ''
+    
+    const data = await response.json()
+    if (!data || !data[0]) return ''
+    
+    // Find example in the API response
+    const meanings = data[0].meanings || []
+    for (const meaning of meanings) {
+      const definitions = meaning.definitions || []
+      for (const def of definitions) {
+        if (def.example) {
+          exampleCache.set(word, def.example)
+          return def.example
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return ''
+}
+
+// Load cloze example when word changes
+const loadClozeExample = async () => {
+  const word = currentWord.value?.spelling
+  if (!word) return
+  
+  // First try database example
+  if (currentWord.value?.example_sentence) {
+    clozeExample.value = currentWord.value.example_sentence
+    return
+  }
+  
+  // Then try Dictionary API
+  const example = await fetchClozeExample(word)
+  if (example) {
+    clozeExample.value = example
+    return
+  }
+  
+  // Fall back to blank
+  clozeExample.value = ''
+}
 
 const currentWord = computed(() => wordStore.todayWords[currentIndex.value])
 
@@ -320,46 +488,132 @@ const progressPercent = computed(() => {
   return ((currentIndex.value) / wordStore.todayWords.length) * 100
 })
 
+// Preview mode computed
+const previewWord = computed(() => wordStore.todayWords[previewIndex.value])
+const previewProgress = computed(() => {
+  if (wordStore.todayWords.length === 0) return 100
+  return ((previewIndex.value) / wordStore.todayWords.length) * 100
+})
+const isPreviewComplete = computed(() => previewIndex.value >= wordStore.todayWords.length)
+
+const startStudy = () => {
+  isPreviewMode.value = false
+  currentIndex.value = 0
+  randomMode()
+}
+
+const nextPreviewWord = () => {
+  previewShowAnswer.value = false
+  previewIndex.value++
+}
+
+const skipPreview = () => {
+  isPreviewMode.value = false
+  currentIndex.value = 0
+  randomMode()
+}
+
+// Cache for example sentences
+const exampleCache = new Map()
+
 const clozeSentence = computed(() => {
   const word = currentWord.value?.spelling || ''
   
-  // 如果有例句，使用例句并将单词替换为空白
+  // If we have a fetched example, use it
+  if (clozeExample.value) {
+    const regex = new RegExp(word, 'gi')
+    return clozeExample.value.replace(regex, '______')
+  }
+  
+  // If word has example sentence in database, use it
   if (currentWord.value?.example_sentence) {
     const regex = new RegExp(word, 'gi')
     return currentWord.value.example_sentence.replace(regex, '______')
   }
   
-  // 如果没有例句，根据词性自动生成例句
-  const pos = currentWord.value?.part_of_speech || ''
+  // Otherwise, use a better fallback based on meaning
   const meaning = currentWord.value?.meaning || ''
   
-  // 根据词性生成不同的例句模板（单词用______代替）
-  const templates = {
-    'n.': `The ______ is very important in our daily life.`,
-    'v.': `I want to ______ this problem tomorrow.`,
-    'adj.': `This is a very ______ decision for us.`,
-    'adv.': `She works very ______ every day.`,
-    'pron.': `______ is my best friend.`,
-    'prep.': `The book is ______ the table.`,
-    'conj.': `I will go ______ it rains.`,
-    'num.': `I have ______ apples.`,
-    'interj.': `______! That's amazing!`
+  // Better context-aware templates based on meaning keywords
+  if (meaning.includes('重要') || meaning.includes('关键')) {
+    return `This concept is ______ and essential for understanding.`
+  }
+  if (meaning.includes('学习') || meaning.includes('学校')) {
+    return `I need to ______ my lessons before the exam.`
+  }
+  if (meaning.includes('工作') || meaning.includes('职业')) {
+    return `She decided to ______ in this field.`
+  }
+  if (meaning.includes('时间')) {
+    return `We don't have much ______ to finish this task.`
+  }
+  if (meaning.includes('人') || meaning.includes('者')) {
+    return `The ______ is very dedicated to their work.`
+  }
+  if (meaning.includes('做') || meaning.includes('进行')) {
+    return `Let's ______ this together as a team.`
+  }
+  if (meaning.includes('认为') || meaning.includes('相信')) {
+    return `I ______ this is the right approach.`
+  }
+  if (meaning.includes('提供') || meaning.includes('给予')) {
+    return `Please ______ more information about this.`
+  }
+  if (meaning.includes('使用') || meaning.includes('用')) {
+    return `We can ______ this method to solve the problem.`
+  }
+  if (meaning.includes('获得') || meaning.includes('得到')) {
+    return `How can I ______ better results?`
   }
   
-  // 尝试匹配词性生成例句
-  for (const [key, template] of Object.entries(templates)) {
-    if (pos.includes(key)) {
-      return template
-    }
-  }
-  
-  // 默认例句
-  return `The word "______" means "${meaning}".`
+  // Generic fallback with meaning hint
+  return `The word "______" means: "${meaning}". Fill in the blank with the correct word.`
 })
 
-const playPronunciation = () => {
-  if (currentWord.value?.spelling) {
-    const utterance = new SpeechSynthesisUtterance(currentWord.value.spelling)
+const playPronunciation = async (word) => {
+  const wordToSpeak = word || currentWord.value?.spelling
+  if (!wordToSpeak) return
+  
+  try {
+    // Fetch from Free Dictionary API which provides real audio
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(wordToSpeak.trim())}`)
+    
+    if (!response.ok) throw new Error('Word not found')
+    
+    const data = await response.json()
+    if (!data || !data[0]) throw new Error('No data')
+    
+    // Find an English audio URL
+    const phonetics = data[0].phonetics || []
+    let audioUrl = null
+    
+    for (const p of phonetics) {
+      if (p.audio && p.audio.includes('//')) {
+        audioUrl = p.audio
+        break
+      }
+    }
+    
+    if (audioUrl) {
+      const audio = new Audio(audioUrl)
+      audio.play().catch(e => {
+        console.error('Audio play failed:', e)
+      })
+    } else {
+      // Fallback to browser TTS
+      speakWithBrowser(wordToSpeak)
+    }
+  } catch (error) {
+    console.error('TTS error:', error)
+    // Fallback to browser TTS
+    speakWithBrowser(wordToSpeak)
+  }
+}
+
+// Browser TTS fallback
+const speakWithBrowser = (word) => {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(word)
     utterance.lang = 'en-US'
     utterance.rate = 0.8
     speechSynthesis.speak(utterance)
@@ -444,11 +698,33 @@ const checkCompleted = async () => {
   }
 }
 
+// Watch for word changes and load cloze example when in cloze mode
+watch(currentIndex, async () => {
+  // Reset cloze example when word changes
+  clozeExample.value = ''
+  
+  // If entering cloze mode, try to fetch example
+  if (studyMode.value === 'cloze') {
+    await loadClozeExample()
+  }
+})
+
+// Also watch for mode changes
+watch(studyMode, async (newMode) => {
+  if (newMode === 'cloze') {
+    await loadClozeExample()
+  }
+})
+
 onMounted(async () => {
+  // Only fetch if not already loaded
   if (wordStore.todayWords.length === 0) {
     await wordStore.fetchTodayWords()
   }
-  // 初始随机选择模式
+  // Start in preview mode
+  isPreviewMode.value = true
+  previewIndex.value = 0
+  // Initial random mode for later
   randomMode()
 })
 </script>

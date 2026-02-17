@@ -17,6 +17,20 @@
           下载模板
         </button>
         <button
+          @click="batchUpdateExamples"
+          :disabled="updatingExamples"
+          class="px-4 py-2 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition flex items-center disabled:opacity-50"
+        >
+          <svg v-if="updatingExamples" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          批量更新例句
+        </button>
+        <button
           @click="showImportModal = true"
           class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center"
         >
@@ -177,12 +191,28 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">英文单词</label>
-            <input
-              v-model="wordForm.spelling"
-              type="text"
-              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="请输入英文单词"
-            />
+            <div class="flex space-x-2">
+              <input
+                v-model="wordForm.spelling"
+                type="text"
+                class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                placeholder="请输入英文单词"
+              />
+              <button
+                @click="fetchWordInfo"
+                :disabled="fetchingWord || !wordForm.spelling.trim()"
+                class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center"
+                title="自动获取释义和例句"
+              >
+                <svg v-if="fetchingWord" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">词性</label>
@@ -394,6 +424,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
+import { fetchWordData, fetchWordDataBatch } from '@/utils/dictionaryService'
 
 const words = ref([])
 const searchQuery = ref('')
@@ -403,6 +434,8 @@ const showImportModal = ref(false)
 const showCategoryModal = ref(false)
 const editingWord = ref(null)
 const saving = ref(false)
+const fetchingWord = ref(false)
+const updatingExamples = ref(false)
 const importing = ref(false)
 const importWords = ref([])
 const importCategory = ref('CET-4')
@@ -518,6 +551,34 @@ const closeWordModal = () => {
     phonetic: '',
     category: 'CET-4',
     example_sentence: ''
+  }
+}
+
+const fetchWordInfo = async () => {
+  if (!wordForm.value.spelling.trim()) return
+  
+  fetchingWord.value = true
+  try {
+    const data = await fetchWordData(wordForm.value.spelling)
+    
+    if (data.definition) {
+      // 自动填充释义（如果为空）
+      if (!wordForm.value.meaning) {
+        wordForm.value.meaning = data.definition
+      }
+    }
+    
+    if (data.phonetic && !wordForm.value.phonetic) {
+      wordForm.value.phonetic = data.phonetic
+    }
+    
+    if (data.example && !wordForm.value.example_sentence) {
+      wordForm.value.example_sentence = data.example
+    }
+  } catch (error) {
+    console.error('获取单词信息失败:', error)
+  } finally {
+    fetchingWord.value = false
   }
 }
 
@@ -708,24 +769,50 @@ const parseTxtFile = (text) => {
 const importWordsToDb = async () => {
   importing.value = true
   try {
-    for (const word of importWords.value) {
+    // 显示进度
+    const total = importWords.value.length
+    let successCount = 0
+    let failCount = 0
+    
+    for (let i = 0; i < total; i++) {
+      const word = importWords.value[i]
+      
+      // 如果没有例句，自动获取
+      let exampleSentence = word.example_sentence
+      let phonetic = word.phonetic
+      
+      if (!exampleSentence || !phonetic) {
+        const data = await fetchWordData(word.spelling)
+        if (!exampleSentence && data.example) {
+          exampleSentence = data.example
+        }
+        if (!phonetic && data.phonetic) {
+          phonetic = data.phonetic
+        }
+      }
+      
       const { error } = await supabase
         .from('words')
         .insert({ 
           spelling: word.spelling,
           part_of_speech: word.part_of_speech || '',
           meaning: word.meaning,
-          phonetic: word.phonetic || '',
-          example_sentence: word.example_sentence || '',
+          phonetic: phonetic || '',
+          example_sentence: exampleSentence || '',
           category: importCategory.value 
         })
-      if (error) throw error
+      
+      if (error) {
+        failCount++
+      } else {
+        successCount++
+      }
     }
     
     await fetchWords()
     showImportModal.value = false
     importWords.value = []
-    alert('导入成功！')
+    alert(`导入完成！成功: ${successCount} 个，失败: ${failCount} 个`)
   } catch (error) {
     console.error('Import error:', error)
     alert('导入失败，请重试')
@@ -858,6 +945,68 @@ const handleImportFileSelect = async (event) => {
   } catch (error) {
     console.error('File parse error:', error)
     alert('文件解析失败')
+  }
+}
+
+// 批量更新缺失例句的单词
+const batchUpdateExamples = async () => {
+  // 找出没有例句的单词
+  const wordsWithoutExamples = words.value.filter(w => !w.example_sentence || !w.phonetic)
+  
+  if (wordsWithoutExamples.length === 0) {
+    alert('所有单词都已包含例句和音标！')
+    return
+  }
+  
+  if (!confirm(`将为 ${wordsWithoutExamples.length} 个缺少例句的单词自动获取例句和音标，是否继续？`)) {
+    return
+  }
+  
+  updatingExamples.value = true
+  let successCount = 0
+  let failCount = 0
+  
+  try {
+    for (let i = 0; i < wordsWithoutExamples.length; i++) {
+      const word = wordsWithoutExamples[i]
+      
+      // 获取API数据
+      const data = await fetchWordData(word.spelling)
+      
+      const updateData = {}
+      if (!word.example_sentence && data.example) {
+        updateData.example_sentence = data.example
+      }
+      if (!word.phonetic && data.phonetic) {
+        updateData.phonetic = data.phonetic
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        const { error } = await supabase
+          .from('words')
+          .update(updateData)
+          .eq('id', word.id)
+        
+        if (error) {
+          failCount++
+        } else {
+          successCount++
+        }
+      }
+      
+      // 添加延迟避免API限流
+      if (i < wordsWithoutExamples.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+    
+    await fetchWords()
+    alert(`更新完成！成功: ${successCount} 个，失败: ${failCount} 个`)
+  } catch (error) {
+    console.error('批量更新失败:', error)
+    alert('批量更新失败，请重试')
+  } finally {
+    updatingExamples.value = false
   }
 }
 

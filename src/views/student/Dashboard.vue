@@ -6,6 +6,20 @@
       <p class="text-primary-100">今天也要坚持背单词哦~</p>
     </div>
 
+    <!-- Learning Plan Info -->
+    <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-primary-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">当前学习计划</p>
+          <p class="text-lg font-semibold text-gray-800">{{ categoryDisplay }}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-sm text-gray-500">每日新词</p>
+          <p class="text-lg font-semibold text-primary-600">{{ userDailyLimit }} 词/天</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Today's Stats -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white rounded-xl p-4 shadow-sm">
@@ -159,6 +173,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
+import { supabase } from '@/lib/supabase'
 import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js'
 
 Chart.register(DoughnutController, ArcElement, Tooltip, Legend)
@@ -167,6 +182,43 @@ const authStore = useAuthStore()
 const wordStore = useWordStore()
 const chartCanvas = ref(null)
 let chartInstance = null
+
+// Learning plan data
+const userCategory = ref('')
+const userDailyLimit = ref(20)
+
+const fetchUserLearningPlan = async () => {
+  if (!authStore.user) return
+  
+  try {
+    // Get user settings for category
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('category')
+      .eq('user_id', authStore.user.id)
+      .maybeSingle()
+    
+    userCategory.value = settings?.category || 'all'
+    
+    // Get daily limit from user
+    const { data: userData } = await supabase
+      .from('users')
+      .select('daily_limit')
+      .eq('id', authStore.user.id)
+      .maybeSingle()
+    
+    userDailyLimit.value = userData?.daily_limit || 20
+  } catch (error) {
+    console.error('Fetch learning plan error:', error)
+  }
+}
+
+const categoryDisplay = computed(() => {
+  if (!userCategory.value || userCategory.value === 'all') {
+    return '全部词汇'
+  }
+  return userCategory.value
+})
 
 const todayStats = computed(() => {
   const stats = {
@@ -220,8 +272,11 @@ const createChart = () => {
 }
 
 onMounted(async () => {
-  await wordStore.fetchWords()
-  await wordStore.fetchTodayWords()
+  // Parallel fetch for faster loading
+  await Promise.all([
+    fetchUserLearningPlan(),
+    wordStore.fetchTodayWords()
+  ])
   setTimeout(createChart, 100)
 })
 
