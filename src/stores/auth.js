@@ -16,7 +16,12 @@ export const useAuthStore = defineStore('auth', () => {
       // This is much faster
       const storedUser = localStorage.getItem('smartmemo_user')
       if (storedUser) {
-        user.value = JSON.parse(storedUser)
+        const userData = JSON.parse(storedUser)
+        // Ensure admin_daily_limit exists
+        if (!userData.admin_daily_limit) {
+          userData.admin_daily_limit = userData.daily_limit
+        }
+        user.value = userData
       }
     } catch (error) {
       console.error('Auth check error:', error)
@@ -51,7 +56,8 @@ export const useAuthStore = defineStore('auth', () => {
         id: data.id,
         username: data.username,
         role: data.role,
-        daily_limit: data.daily_limit
+        daily_limit: data.daily_limit,
+        admin_daily_limit: data.daily_limit // Store original admin-assigned limit
       }
 
       // Store in localStorage

@@ -166,6 +166,8 @@ const selectedWord = ref(null)
 
 const tabs = [
   { label: '全部', value: 'all' },
+  { label: '教师布置', value: 'institution' },
+  { label: '自行导入', value: 'custom' },
   { label: '新词', value: 'new' },
   { label: '学习中', value: 'learning' },
   { label: '熟悉', value: 'familiar' },
@@ -174,14 +176,21 @@ const tabs = [
 
 const getTabCount = (tab) => {
   if (tab === 'all') return wordStore.words.length
+  if (tab === 'institution') return wordStore.words.filter(w => w.source === 'institution').length
+  if (tab === 'custom') return wordStore.words.filter(w => w.source === 'custom').length
   return wordStore.proficiencyStats[tab] || 0
 }
 
 const filteredWords = computed(() => {
   let words = [...wordStore.words]
   
-  // Filter by tab
-  if (activeTab.value !== 'all') {
+  // Filter by source tab (教师布置/自行导入)
+  if (activeTab.value === 'institution') {
+    words = words.filter(word => word.source === 'institution')
+  } else if (activeTab.value === 'custom') {
+    words = words.filter(word => word.source === 'custom')
+  } else if (activeTab.value !== 'all') {
+    // Filter by proficiency tab
     words = words.filter(word => {
       const progress = wordStore.userProgress.find(p => p.word_id === word.id)
       if (activeTab.value === 'new') return !progress || progress.repetitions === 0

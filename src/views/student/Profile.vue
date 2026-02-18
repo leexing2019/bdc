@@ -49,19 +49,26 @@
         <div class="p-4 flex items-center justify-between">
           <div>
             <p class="font-medium text-gray-800">每日新词数量</p>
-            <p class="text-sm text-gray-500">每天学习的新单词上限</p>
+            <p class="text-sm text-gray-500">
+              教师分配: {{ authStore.user?.admin_daily_limit || authStore.user?.daily_limit || 20 }} 词/天
+              <span v-if="authStore.user?.daily_limit > (authStore.user?.admin_daily_limit || 20)" class="text-green-600 ml-2">
+                (已调整为 {{ authStore.user?.daily_limit }} 词/天)
+              </span>
+            </p>
           </div>
           <div class="flex items-center space-x-2">
             <button
-              @click="updateDailyLimit(Math.max(5, (authStore.user?.daily_limit || 20) - 5))"
-              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+              @click="updateDailyLimitDecrease"
+              :disabled="(authStore.user?.daily_limit || 20) <= (authStore.user?.admin_daily_limit || 20)"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               -
             </button>
             <span class="w-12 text-center font-medium">{{ authStore.user?.daily_limit || 20 }}</span>
             <button
-              @click="updateDailyLimit(Math.min(50, (authStore.user?.daily_limit || 20) + 5))"
-              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+              @click="updateDailyLimitIncrease"
+              :disabled="(authStore.user?.daily_limit || 20) >= 50"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               +
             </button>
@@ -144,6 +151,31 @@ const passwordForm = reactive({
 const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordLoading = ref(false)
+
+const updateDailyLimitDecrease = async () => {
+  const currentLimit = authStore.user?.daily_limit || 20
+  const adminLimit = authStore.user?.admin_daily_limit || 20
+  
+  // 只能大于或等于教师分配的量
+  if (currentLimit <= adminLimit) {
+    return
+  }
+  
+  const newLimit = Math.max(adminLimit, currentLimit - 5)
+  await updateDailyLimit(newLimit)
+}
+
+const updateDailyLimitIncrease = async () => {
+  const currentLimit = authStore.user?.daily_limit || 20
+  
+  // 最大只能调整到50
+  if (currentLimit >= 50) {
+    return
+  }
+  
+  const newLimit = Math.min(50, currentLimit + 5)
+  await updateDailyLimit(newLimit)
+}
 
 const updateDailyLimit = async (newLimit) => {
   try {

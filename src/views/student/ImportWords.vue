@@ -6,13 +6,59 @@
       <p class="text-gray-500 mt-1">上传文件或手动添加单词到你的学习计划</p>
     </div>
 
+    <!-- DeepSeek API Key 设置 -->
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <div class="flex items-start space-x-3">
+        <div class="flex-1">
+          <div class="flex items-center space-x-2 mb-2">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="font-medium text-gray-800">例句生成设置</span>
+          </div>
+          <p class="text-sm text-gray-500 mb-3">
+            系统会尝试从词典API获取例句。如果无法获取，你可以输入 DeepSeek API Key 来生成例句。
+          </p>
+          <div class="flex items-center space-x-2">
+            <input
+              v-model="deepseekApiKey"
+              type="password"
+              placeholder="DeepSeek API Key（可选）"
+              class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            />
+            <button
+              @click="saveDeepseekApiKey"
+              :disabled="testingApi"
+              class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm disabled:opacity-50 flex items-center"
+            >
+              <svg v-if="testingApi" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ testingApi ? '测试中' : '保存' }}
+            </button>
+            <a
+              href="https://platform.deepseek.com/"
+              target="_blank"
+              class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition text-sm flex items-center"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              申请API Key
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Upload Section -->
     <div class="bg-white rounded-xl p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">上传文件</h2>
       
       <!-- File Input -->
       <div
-        v-if="!parsedWords.length"
+        v-if="!parsedWords.length && !processingFile"
         class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-500 transition cursor-pointer"
         @click="triggerFileInput"
         @dragover.prevent
@@ -30,6 +76,18 @@
         </svg>
         <p class="text-gray-600 mb-2">点击或拖拽文件到此处上传</p>
         <p class="text-sm text-gray-400">支持 TXT, DOC, DOCX, XLSX 格式</p>
+      </div>
+
+      <!-- Processing File Loading -->
+      <div
+        v-if="processingFile"
+        class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center"
+      >
+        <svg class="w-12 h-12 mx-auto text-primary-500 mb-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gray-600">正在处理文件...</p>
       </div>
 
       <!-- Format Instructions -->
@@ -188,6 +246,7 @@ import { ref } from 'vue'
 import { useWordStore } from '@/stores/words'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
+import { fetchWordData, testDeepSeekApi } from '@/utils/dictionaryService'
 
 const wordStore = useWordStore()
 
@@ -197,11 +256,41 @@ const submitting = ref(false)
 const showSuccess = ref(false)
 const validatingWord = ref(false)
 const validationError = ref('')
+const processingFile = ref(false)
+const testingApi = ref(false)
+const deepseekApiKey = ref(localStorage.getItem('deepseek_api_key') || '')
 const newWord = ref({
   spelling: '',
   partOfSpeech: '',
   meaning: ''
 })
+
+// 保存并测试 DeepSeek API Key
+const saveDeepseekApiKey = async () => {
+  const apiKey = deepseekApiKey.value.trim()
+  if (!apiKey) {
+    alert('请输入 API Key')
+    return
+  }
+  
+  testingApi.value = true
+  
+  try {
+    const result = await testDeepSeekApi(apiKey)
+    
+    if (result.success) {
+      localStorage.setItem('deepseek_api_key', apiKey)
+      alert(`✅ ${result.message}\n\n测试回复: "${result.example}"`)
+    } else {
+      alert(`❌ ${result.message}`)
+    }
+  } catch (error) {
+    console.error('测试 API 失败:', error)
+    alert('测试失败，请重试')
+  } finally {
+    testingApi.value = false
+  }
+}
 
 // 验证单个单词
 const validateWord = async (spelling) => {
@@ -243,6 +332,7 @@ const handleFileSelect = (event) => {
 }
 
 const processFile = async (file) => {
+  processingFile.value = true
   const extension = file.name.split('.').pop().toLowerCase()
   
   try {
@@ -264,6 +354,8 @@ const processFile = async (file) => {
   } catch (error) {
     console.error('File processing error:', error)
     alert('文件解析失败，请检查格式')
+  } finally {
+    processingFile.value = false
   }
 }
 
