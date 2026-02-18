@@ -959,8 +959,8 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       results.push({ ...word, valid: true, warning: '验证出错: ' + error.message })
     }
     
-    // 添加延迟避免 API 限流
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // 添加延迟避免 API 限流（增加延迟时间）
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
   
   const validCount = results.filter(w => w.valid).length
@@ -1236,18 +1236,26 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
       let phonetic = word.phonetic
       
       if (!exampleSentence || !phonetic) {
-        console.log('开始获取单词数据:', word.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
-        const data = await fetchWordData(word.spelling, deepseekApiKey.value)
-        console.log('获取到的数据:', word.spelling, data)
-        
-        if (!phonetic && data.phonetic) {
-          phonetic = data.phonetic
+        try {
+          console.log('开始获取单词数据:', word.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+          const data = await fetchWordData(word.spelling, deepseekApiKey.value)
+          console.log('获取到的数据:', word.spelling, data)
+          
+          if (!phonetic && data.phonetic) {
+            phonetic = data.phonetic
+          }
+          
+          if (!exampleSentence && data.example) {
+            exampleSentence = data.example
+            console.log('获取到例句:', exampleSentence)
+          }
+        } catch (apiError) {
+          console.error('获取单词数据失败:', word.spelling, apiError.message)
+          // 继续导入，不因为API失败而中断
         }
         
-        if (!exampleSentence && data.example) {
-          exampleSentence = data.example
-          console.log('获取到例句:', exampleSentence)
-        }
+        // 添加延迟避免 API 限流
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
       
       const { error } = await supabase

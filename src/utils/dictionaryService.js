@@ -142,7 +142,9 @@ export async function fetchWordData(word, deepseekApiKey = null) {
     const response = await fetch(`${API_BASE}/${encodeURIComponent(cleanWord)}`)
 
     if (!response.ok) {
-      // Word not found or API error, try DeepSeek if API key provided
+      // Word not found or API error (including 429 rate limit)
+      console.warn(`Dictionary API error for ${cleanWord}: ${response.status}`)
+      // Try DeepSeek if API key provided
       if (deepseekApiKey) {
         // 使用原始输入词生成例句
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
@@ -154,6 +156,7 @@ export async function fetchWordData(word, deepseekApiKey = null) {
     const data = await response.json()
 
     if (!data || !data[0]) {
+      // No data returned
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
         return { definition: null, example: example, phonetic: null }
@@ -209,11 +212,15 @@ export async function fetchWordData(word, deepseekApiKey = null) {
 
     return { definition: null, example: null, phonetic: phonetic }
   } catch (error) {
-    console.error('Dictionary API error:', error)
-    // Try DeepSeek as fallback on error
-    if (deepseekApiKey) {
-      const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
-      return { definition: null, example: example, phonetic: null }
+    console.error('Dictionary API error:', error.message)
+    // Try DeepSeek as fallback on error (网络错误、CORS错误等)
+    try {
+      if (deepseekApiKey) {
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
+        return { definition: null, example: example, phonetic: null }
+      }
+    } catch (deepseekError) {
+      console.error('DeepSeek fallback also failed:', deepseekError.message)
     }
     return { definition: null, example: null, phonetic: null }
   }
