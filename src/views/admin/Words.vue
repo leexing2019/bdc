@@ -1236,7 +1236,9 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
       let phonetic = word.phonetic
       
       if (!exampleSentence || !phonetic) {
+        console.log('开始获取单词数据:', word.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
         const data = await fetchWordData(word.spelling, deepseekApiKey.value)
+        console.log('获取到的数据:', word.spelling, data)
         
         if (!phonetic && data.phonetic) {
           phonetic = data.phonetic
@@ -1244,6 +1246,7 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
         
         if (!exampleSentence && data.example) {
           exampleSentence = data.example
+          console.log('获取到例句:', exampleSentence)
         }
       }
       
@@ -1402,7 +1405,9 @@ const fetchWordInfo = async () => {
   
   fetchingWord.value = true
   try {
+    console.log('开始获取单词信息:', wordForm.value.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
     const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value)
+    console.log('获取到的数据:', data)
     
     // 音标填充到音标字段
     if (data.phonetic && !wordForm.value.phonetic) {
@@ -1412,6 +1417,11 @@ const fetchWordInfo = async () => {
     // 只填充真正的例句到例句字段，不包含释义
     if (data.example && !wordForm.value.example_sentence) {
       wordForm.value.example_sentence = data.example
+      console.log('成功获取例句:', data.example)
+    } else if (!data.example && deepseekApiKey.value) {
+      console.log('未能从Dictionary API获取例句，DeepSeek API Key已配置但未生成例句')
+    } else if (!deepseekApiKey.value) {
+      console.log('未配置DeepSeek API Key，无法生成例句')
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
