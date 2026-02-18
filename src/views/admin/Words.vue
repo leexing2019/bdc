@@ -11,9 +11,8 @@
         <input
           v-model="deepseekApiKey"
           type="password"
-          placeholder="DeepSeek API Key（可选）"
+          placeholder="DeepSeek API Key（可选，用于生成例句）"
           class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-          @blur="saveDeepseekApiKey"
         />
         <button
           @click="saveDeepseekApiKey"
@@ -709,6 +708,8 @@ const saveDeepseekApiKey = async () => {
     if (result.success) {
       // 保存到本地存储
       localStorage.setItem('deepseek_api_key', apiKey)
+      // 同时更新ref，确保立即生效
+      deepseekApiKey.value = apiKey
       alert(`✅ ${result.message}\n\n测试回复: "${result.example}"`)
     } else {
       // 清除无效的 API Key
