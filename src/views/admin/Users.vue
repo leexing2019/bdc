@@ -379,6 +379,7 @@ const editUser = (user) => {
     username: user.username,
     password: ''
   }
+  showAddModal.value = true
 }
 
 const closeModal = () => {
