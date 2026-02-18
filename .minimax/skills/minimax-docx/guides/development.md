@@ -1,91 +1,40 @@
 # C# OpenXML Coding Guide
 
-> **Required Reading**: This document contains critical rules to avoid compile errors. Must read before generating any document.
+> **Required Reading**: This document contains critical rules to avoid compile errors. Must read before writing C# code.
+
+For template-apply workflow, see `guides/template-apply-workflow.md` first.
 
 ---
 
-## 0. Template-First Engineering Rules (P0)
+## 1. Dependency Discipline
 
-When the user provides a `.docx` template or reference file, this section overrides all preset template guidance.
-
-### Mandatory Routing
-
-- Use `from-template` assembly path in `Program.cs`.
-- Use `TemplateAnalyzer` to parse existing structure first.
-- Use `TemplateAssembler` to compose from the user template copy.
-- Do **not** invoke `Templates/AcademicPaper.cs` or `Templates/TechManual.cs` for template-based tasks.
-
-### Forbidden Behavior in Template Tasks
-
-- Injecting new cover/back cover pages unless explicitly requested.
-- Adding TOC/chapters/references that are absent from template.
-- Replacing template typography/palette with preset styles.
-- Reordering major section topology without explicit user instruction.
-
-### Required Behavior in Template Tasks
-
-- Preserve original section/page flow.
-- Preserve existing signature blocks, form areas, and table anchors.
-- Keep additions local and minimally invasive.
-- Execute the full checklist in **0.6 Template Task Execution Checklist**.
+- Keep core workflow dependency-free (Python stdlib + .NET).
+- Treat `matplotlib`, `playwright`, `Pillow` as optional.
+- Use lazy imports for optional libraries.
+- Degrade gracefully when optional features are unavailable.
 
 ---
 
-## 0.5 Layered OOXML Order Profiles (P0.5)
+## 2. OOXML Order Profiles
 
-`spec/ooxml_order.py` now uses layered constraints, not one static list:
+`spec/ooxml_order.py` uses layered constraints:
 
 | Layer | Meaning | Typical Use |
 |---|---|---|
-| `MUST` | Schema anchor order that should always hold | Any generation flow |
-| `SHOULD` | High-value compatibility order | Default `repair` profile |
-| `MAY` | Optional ordering hints | `compat`/`strict` checks |
-| `VENDOR` | Implementation-specific tail hints | `strict` diagnostics |
+| `MUST` | Schema anchor order | Any generation |
+| `SHOULD` | Compatibility order | Default `repair` profile |
+| `MAY` | Optional hints | `compat`/`strict` |
+| `VENDOR` | Implementation-specific | `strict` diagnostics |
 
-Profiles:
-
-- `minimal`: only `MUST`
-- `repair`: `MUST + SHOULD` (default)
-- `compat`: `MUST + SHOULD + MAY`
-- `strict`: all layers
-
-Quick checks:
+Profiles: `minimal`, `repair` (default), `compat`, `strict`
 
 ```bash
 python3 <skill-path>/docx_engine.py order pPr repair
-python3 <skill-path>/docx_engine.py order settings strict
 ```
 
 ---
 
-## 0.6 Template Task Execution Checklist (End-to-End)
-
-Run this sequence whenever the input includes a user template/reference `.docx`:
-
-1. Confirm input/output paths:
-   template path exists; output filename is explicit.
-2. Freeze requested scope:
-   list only requested edits and block all others by default.
-3. Define preserved structure:
-   section topology, signature blocks, anchors/bookmarks, and numbering are no-touch unless user asks.
-4. Preflight:
-   `python3 <skill-path>/docx_engine.py doctor`.
-5. Force template route:
-   use `from-template`; do not start from `AcademicPaper`/`TechManual`.
-6. Build:
-   `dotnet run --project <skill-path>/src/DocForge.csproj -- from-template <template.docx> <output.docx>`.
-7. Audit:
-   `python3 <skill-path>/docx_engine.py audit <output.docx>`.
-8. Quick content verification:
-   `python3 <skill-path>/docx_engine.py preview <output.docx>`.
-9. Preservation gate:
-   verify no unrequested cover/TOC/chapter insertion and no major section reflow.
-10. On failure:
-    patch template-driven logic and rerun steps 6-9 until all gates pass.
-
----
-
-## 1. String Encoding Rules (CRITICAL)
+## 3. String Encoding Rules (CRITICAL)
 
 ### Core Principle: Keep text as-is, escape only when necessary
 
@@ -145,7 +94,7 @@ var para = new Text(
 
 ---
 
-## 2. Namespace Aliases (MANDATORY)
+## 4. Namespace Aliases (MANDATORY)
 
 **CRITICAL**: `DocumentFormat.OpenXml.Drawing` and `DocumentFormat.OpenXml.Wordprocessing` contain identical class names (`Paragraph`, `Run`, `Text`, `Table`, etc.). Direct `using` causes CS0104 ambiguity errors.
 
@@ -169,7 +118,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 ---
 
-## 3. API Quick Reference
+## 5. API Quick Reference
 
 ### Common Wrong vs Correct Names
 
@@ -224,7 +173,7 @@ new Paragraph(
 
 ---
 
-## 4. RunProperties Element Order (CRITICAL)
+## 6. RunProperties Element Order (CRITICAL)
 
 OpenXML ordering in `RunProperties` is profile-sensitive. In `strict` profile, use the sequence below to avoid validation drift.
 
@@ -260,7 +209,7 @@ new RunProperties(
 
 ---
 
-## 5. Type Conversions (CRITICAL)
+## 7. Type Conversions (CRITICAL)
 
 OpenXML properties often require explicit type conversions.
 
@@ -288,7 +237,7 @@ new TableRowHeight { Val = (UInt32Value)(uint)(row == 0 ? 400 : 300) }
 
 ---
 
-## 6. Value Constraints
+## 8. Value Constraints
 
 | Property | Type | Wrong | Correct |
 |----------|------|-------|---------|
@@ -329,7 +278,7 @@ new Indentation { Hanging = "420", Left = "420" }
 
 ---
 
-## 7. Common Error Troubleshooting
+## 9. Common Error Troubleshooting
 
 ### Compile Errors
 
@@ -416,7 +365,7 @@ table.Append(row);
 
 ---
 
-## 8. Critical Code Snippets
+## 10. Critical Code Snippets
 
 ### Correct Bookmark Placement
 
@@ -477,7 +426,7 @@ long displayHeight = displayWidth * h / w;
 
 ---
 
-## 9. Golden Rule: Never Improvise API Calls
+## 11. Golden Rule: Never Improvise API Calls
 
 **Use current source modules as API references.** Prefer `src/Core/*.cs` and `src/Templates/*.cs` for class names, property names, and constructor patterns. When writing code:
 
@@ -501,17 +450,9 @@ long displayHeight = displayWidth * h / w;
 - [ ] `TableCellWidth` matches `GridColumn` width?
 - [ ] No properties not found in examples?
 
-### Template Task Checklist (Must Pass)
-
-- [ ] Followed full **0.6 Template Task Execution Checklist**?
-- [ ] User provided template detected and routed to `from-template` flow?
-- [ ] Structure parsed by `TemplateAnalyzer` before modifications?
-- [ ] Any added component explicitly requested by user?
-- [ ] No preset-template file (`AcademicPaper`/`TechManual`) used?
-
 ---
 
-## 10. Extended Reference
+## 12. Extended Reference
 
 Use current files as canonical references:
 

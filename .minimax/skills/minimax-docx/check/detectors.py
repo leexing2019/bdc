@@ -1,18 +1,25 @@
 """Validation detectors for identifying document quality issues."""
 
+from __future__ import annotations
+
+import logging
+import re
 from functools import cached_property
 from pathlib import Path
 from typing import Protocol
 import xml.etree.ElementTree as ET
 
-from loguru import logger
-
 from .report import ValidationReport
+
+logger = logging.getLogger(__name__)
 
 # XML namespaces
 WML = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+
+TOC_STYLE_RE = re.compile(r"^toc\d+$", re.IGNORECASE)
+HEADING_STYLE_RE = re.compile(r"^heading\d+$", re.IGNORECASE)
 
 
 class Detector(Protocol):
@@ -68,6 +75,78 @@ class ScanContext:
     def word_dir(self) -> Path:
         """Path to the word/ subdirectory."""
         return self._pkg_dir / "word"
+
+    @cached_property
+    def styles_root(self) -> ET.Element | None:
+        """Parse and return styles.xml root if available."""
+        styles_path = self.word_dir / "styles.xml"
+        if not styles_path.exists():
+            return None
+        return ET.parse(styles_path).getroot()
+
+    @cached_property
+    def toc_style_ids(self) -> set[str]:
+        """Collect paragraph style IDs that represent TOC entries."""
+        return self._collect_style_ids(("toc", "目录"))
+
+    @cached_property
+    def heading_style_ids(self) -> set[str]:
+        """Collect paragraph style IDs that represent heading entries."""
+        return self._collect_style_ids(("heading", "标题"))
+
+    def _collect_style_ids(self, keywords: tuple[str, ...]) -> set[str]:
+        styles = self.styles_root
+        if styles is None:
+            return set()
+
+        ids: set[str] = set()
+        for style in styles.findall(f".//{{{WML}}}style"):
+            style_type = style.get(f"{{{WML}}}type") or style.get("type")
+            if style_type and style_type != "paragraph":
+                continue
+
+            style_id = style.get(f"{{{WML}}}styleId") or style.get("styleId")
+            if not style_id:
+                continue
+
+            terms = [style_id]
+            name = style.find(f"{{{WML}}}name")
+            aliases = style.find(f"{{{WML}}}aliases")
+            based_on = style.find(f"{{{WML}}}basedOn")
+            if name is not None:
+                terms.append(name.get(f"{{{WML}}}val") or name.get("val") or "")
+            if aliases is not None:
+                terms.append(aliases.get(f"{{{WML}}}val") or aliases.get("val") or "")
+            if based_on is not None:
+                terms.append(based_on.get(f"{{{WML}}}val") or based_on.get("val") or "")
+
+            blob = " ".join(terms).lower()
+            if any(keyword.lower() in blob for keyword in keywords):
+                ids.add(style_id)
+
+        return ids
+
+    def paragraph_style_id(self, paragraph: ET.Element) -> str | None:
+        """Return paragraph style ID, if present."""
+        ppr = paragraph.find(f"{{{WML}}}pPr")
+        if ppr is None:
+            return None
+
+        pstyle = ppr.find(f"{{{WML}}}pStyle")
+        if pstyle is None:
+            return None
+
+        return pstyle.get(f"{{{WML}}}val") or pstyle.get("val")
+
+    def is_toc_style_id(self, style_id: str) -> bool:
+        """Check whether a style ID should be treated as TOC style."""
+        sid = style_id.strip()
+        return TOC_STYLE_RE.match(sid) is not None or sid in self.toc_style_ids
+
+    def is_heading_style_id(self, style_id: str) -> bool:
+        """Check whether a style ID should be treated as heading style."""
+        sid = style_id.strip()
+        return HEADING_STYLE_RE.match(sid) is not None or sid in self.heading_style_ids
 
 
 class GridConsistencyDetector:
@@ -313,3 +392,225 @@ class HyperlinkValidityDetector:
                         f"hyperlink/{rid}",
                         "Hyperlink references missing relationship"
                     )
+
+
+class SectionIsolationDetector:
+    """Checks that cover pages are properly isolated with section breaks.
+
+    Cover pages using excessive spacing (Gaps) without section breaks
+    risk content overflow on smaller paper sizes (A5, B5).
+    """
+    name = "section-isolation"
+
+    # Threshold: if total spacing before first page break exceeds this, warn
+    SPACING_THRESHOLD_TWIPS = 4000  # ~200pt
+
+    def scan(self, ctx: ScanContext) -> None:
+        body = ctx.document_root.find(f".//{{{WML}}}body")
+        if body is None:
+            return
+
+        total_spacing = 0
+        found_section_break = False
+        paragraph_count = 0
+
+        for elem in body:
+            if elem.tag != f"{{{WML}}}p":
+                continue
+
+            paragraph_count += 1
+            pPr = elem.find(f"{{{WML}}}pPr")
+
+            # Check for section break
+            if pPr is not None:
+                sectPr = pPr.find(f"{{{WML}}}sectPr")
+                if sectPr is not None:
+                    found_section_break = True
+                    break
+
+                # Accumulate spacing
+                spacing = pPr.find(f"{{{WML}}}spacing")
+                if spacing is not None:
+                    before = spacing.get(f"{{{WML}}}before") or spacing.get("before") or "0"
+                    after = spacing.get(f"{{{WML}}}after") or spacing.get("after") or "0"
+                    try:
+                        total_spacing += int(before) + int(after)
+                    except ValueError:
+                        pass
+
+            # Check for page break in runs
+            for run in elem.findall(f".//{{{WML}}}br"):
+                br_type = run.get(f"{{{WML}}}type") or run.get("type")
+                if br_type == "page":
+                    # Page break found before section break
+                    if total_spacing > self.SPACING_THRESHOLD_TWIPS and not found_section_break:
+                        ctx.report.warning(
+                            "cover/spacing-overflow-risk",
+                            (
+                                f"High spacing ({total_spacing} twips) detected before first page break "
+                                f"without section isolation. On small paper (A5/B5), cover content may overflow. "
+                                f"Consider using SectionProperties with NextPage type."
+                            ),
+                        )
+                    return
+
+        # No page break found in first several paragraphs
+        if paragraph_count > 10 and total_spacing > self.SPACING_THRESHOLD_TWIPS:
+            ctx.report.warning(
+                "cover/no-section-break",
+                "Document appears to lack section breaks. Multi-section documents should use explicit sectPr.",
+            )
+
+
+class OutlineLevelDetector:
+    """Validates outline level hierarchy for proper TOC structure.
+
+    Detects flat TOC structures where all headings use the same outline level,
+    which results in incorrect TOC nesting.
+    """
+    name = "outline-level"
+
+    def scan(self, ctx: ScanContext) -> None:
+        body = ctx.document_root.find(f".//{{{WML}}}body")
+        if body is None:
+            return
+
+        outline_levels: dict[int, int] = {}  # level -> count
+
+        for para in body.findall(f".//{{{WML}}}p"):
+            pPr = para.find(f"{{{WML}}}pPr")
+            if pPr is None:
+                continue
+
+            outline = pPr.find(f"{{{WML}}}outlineLvl")
+            if outline is not None:
+                val = outline.get(f"{{{WML}}}val") or outline.get("val")
+                if val and val.isdigit():
+                    level = int(val)
+                    outline_levels[level] = outline_levels.get(level, 0) + 1
+
+        if not outline_levels:
+            return
+
+        # Check for flat structure (only one level used with many entries)
+        if len(outline_levels) == 1:
+            level, count = next(iter(outline_levels.items()))
+            if count > 3:
+                ctx.report.warning(
+                    "toc/flat-hierarchy",
+                    (
+                        f"All {count} outline entries use level {level}. "
+                        "This creates a flat TOC without nesting. "
+                        "Consider using multiple levels (e.g., 0 for chapters, 1 for sections)."
+                    ),
+                )
+
+
+class HeaderFooterDetector:
+    """Checks for header/footer presence in multi-page documents.
+
+    Documents with multiple sections or many paragraphs should typically
+    have headers and/or footers for navigation.
+    """
+    name = "header-footer"
+
+    PARAGRAPH_THRESHOLD = 30  # Suggest headers/footers for documents with 30+ paragraphs
+
+    def scan(self, ctx: ScanContext) -> None:
+        body = ctx.document_root.find(f".//{{{WML}}}body")
+        if body is None:
+            return
+
+        paragraphs = body.findall(f".//{{{WML}}}p")
+        if len(paragraphs) < self.PARAGRAPH_THRESHOLD:
+            return
+
+        # Check for header/footer references
+        has_header = False
+        has_footer = False
+
+        for sectPr in ctx.document_root.findall(f".//{{{WML}}}sectPr"):
+            if sectPr.find(f"{{{WML}}}headerReference") is not None:
+                has_header = True
+            if sectPr.find(f"{{{WML}}}footerReference") is not None:
+                has_footer = True
+
+        if not has_header and not has_footer:
+            ctx.report.warning(
+                "document/no-header-footer",
+                (
+                    f"Document has {len(paragraphs)} paragraphs but no headers or footers. "
+                    "Consider adding page numbers or document title for navigation."
+                ),
+            )
+
+
+class TocImplementationDetector:
+    """Detect TOC implementation mode and stale static TOC risks."""
+
+    name = "toc-implementation"
+
+    def scan(self, ctx: ScanContext) -> None:
+        body = ctx.document_root.find(f".//{{{WML}}}body")
+        if body is None:
+            return
+
+        paragraphs = body.findall(f"{{{WML}}}p")
+        toc_indices: list[int] = []
+        heading_indices: list[int] = []
+
+        for idx, paragraph in enumerate(paragraphs, 1):
+            style_id = ctx.paragraph_style_id(paragraph)
+            if not style_id:
+                continue
+
+            if ctx.is_toc_style_id(style_id):
+                toc_indices.append(idx)
+            if ctx.is_heading_style_id(style_id):
+                heading_indices.append(idx)
+
+        if not toc_indices:
+            return
+
+        has_toc_field = False
+        for field in ctx.document_root.findall(f".//{{{WML}}}fldSimple"):
+            instr = field.get(f"{{{WML}}}instr") or field.get("instr") or ""
+            if "TOC" in instr.upper():
+                has_toc_field = True
+                break
+        if not has_toc_field:
+            for instr_text in ctx.document_root.findall(f".//{{{WML}}}instrText"):
+                text = (instr_text.text or "").upper()
+                if "TOC" in text:
+                    has_toc_field = True
+                    break
+
+        if not has_toc_field:
+            ctx.report.warning(
+                "toc/static",
+                (
+                    f"Detected {len(toc_indices)} TOC-style paragraphs but no TOC field. "
+                    "Template flow should remove stale TOC entries and rebuild TOC from current headings."
+                ),
+            )
+
+        if heading_indices and len(toc_indices) > len(heading_indices) * 2:
+            ctx.report.warning(
+                "toc/mismatch",
+                (
+                    f"TOC-style paragraph count ({len(toc_indices)}) is much higher than heading count "
+                    f"({len(heading_indices)}). Possible leftover template TOC entries."
+                ),
+            )
+
+        if heading_indices:
+            first_heading = min(heading_indices)
+            leaked_toc = [idx for idx in toc_indices if idx > first_heading]
+            if leaked_toc:
+                ctx.report.warning(
+                    "toc/leakage",
+                    (
+                        "TOC-style paragraphs appear after body headings. "
+                        "Likely TOC content leaked into main body and should be cleaned."
+                    ),
+                )

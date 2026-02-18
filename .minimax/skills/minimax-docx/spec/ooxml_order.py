@@ -12,8 +12,14 @@ Public compatibility contract remains `CONTAINER_ORDERS[str, tuple[str, ...]]`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 from typing import Iterable, Sequence
+
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11
+    class StrEnum(str, Enum):
+        """Compatibility shim for Python versions without enum.StrEnum."""
 
 
 class RuleLevel(StrEnum):

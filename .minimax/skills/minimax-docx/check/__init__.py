@@ -9,6 +9,7 @@ from .detectors import (
     BookmarkIntegrityDetector,
     DrawingIdUniquenessDetector,
     HyperlinkValidityDetector,
+    TocImplementationDetector,
 )
 from .pipeline import ValidationPipeline, validate_document
 
@@ -23,6 +24,7 @@ __all__ = [
     "BookmarkIntegrityDetector",
     "DrawingIdUniquenessDetector",
     "HyperlinkValidityDetector",
+    "TocImplementationDetector",
     "ValidationPipeline",
     "validate_document",
 ]

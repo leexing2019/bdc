@@ -115,6 +115,68 @@ python3 <skill-path>/docx_engine.py audit output/output.docx
 
 ---
 
+## 4.5 Legacy `.doc` Binary Input
+
+**Do not treat `.doc` as XML.** Legacy `.doc` is OLE binary, not OOXML zip.
+
+Identify container first:
+
+```bash
+xxd -l 8 <input-file>
+# ZIP/OOXML: 50 4b 03 04
+# OLE binary: d0 cf 11 e0 a1 b1 1a e1
+```
+
+If OLE binary, convert first:
+
+```bash
+soffice --headless --convert-to docx --outdir <tmp-dir> <input.doc>
+python3 <skill-path>/docx_engine.py audit <tmp-dir>/<converted>.docx
+python3 <skill-path>/docx_engine.py residual <tmp-dir>/<converted>.docx
+```
+
+`textutil` is intentionally unsupported for this conversion path because template-structure fidelity is not reliable enough for deterministic mapping gates.
+
+Common failures:
+
+- `soffice: command not found`
+  Install LibreOffice, or ask user for `.docx`.
+- `Abort trap: 6` or conversion exits in restricted runtime
+  Retry with elevated execution permission or run conversion outside sandbox.
+- Conversion output missing
+  Check write permissions on `--outdir` and file path encoding.
+- Converted file fails `audit`
+  Stop rewrite and request user-provided clean `.docx`.
+
+---
+
+## 4.6 Mapping Gate Failures (Template Fill/Patch)
+
+If fill/patch mode is blocked by mapping gate:
+
+```bash
+python3 <skill-path>/docx_engine.py map-template <mapping.json> --require R1,R2
+python3 <skill-path>/docx_engine.py map-gate <mapping.json> --require R1,R2
+```
+
+Common failures:
+
+- `unresolved status`:
+  some rows are `ambiguous/blocked`; resolve mapping decisions first.
+- `missing required requirements`:
+  one or more required requirement IDs are not covered by resolved rows.
+- `replace/insert requires target_value`:
+  executable row is missing replacement payload.
+- `duplicate id`:
+  mapping rows are not uniquely identifiable.
+
+Action:
+
+- Fix mapping table and rerun gate.
+- If gate still fails, switch to template-apply rebuild mode instead of forcing fill/patch.
+
+---
+
 ## 5. Multi-Column Layout
 
 ### 5.1 Basic Column Declaration

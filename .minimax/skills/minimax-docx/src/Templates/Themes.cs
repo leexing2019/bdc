@@ -7,7 +7,7 @@ namespace DocForge.Templates;
 /// Predefined color palettes for document styling.
 /// Each theme defines colors for headings, body text, accents, and table elements.
 /// </summary>
-public static class Themes
+public static partial class Themes
 {
     /// <summary>
     /// Represents a cohesive set of colors for document styling.
@@ -39,4 +39,7 @@ public static class Themes
 
     /// <summary>Classic black and white with red accents.</summary>
     public static readonly ColorSet Monochrome = new("000000", "1C1C1C", "D62828", "6C757D", "343A40", "DEE2E6");
+
+    /// <summary>Traditional ink brush style for classical texts.</summary>
+    public static readonly ColorSet Ink = new("1A1A1A", "2C2C2C", "8B4513", "707070", "3C3C3C", "D4D4D4");
 }

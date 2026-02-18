@@ -14,6 +14,7 @@ from .detectors import (
     BookmarkIntegrityDetector,
     DrawingIdUniquenessDetector,
     HyperlinkValidityDetector,
+    TocImplementationDetector,
 )
 
 
@@ -94,6 +95,7 @@ class ValidationPipeline:
             .add(BookmarkIntegrityDetector())
             .add(DrawingIdUniquenessDetector())
             .add(HyperlinkValidityDetector())
+            .add(TocImplementationDetector())
         )
 
 

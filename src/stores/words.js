@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import { fetchWordData } from '@/utils/dictionaryService'
 
 // SM-2 Algorithm Implementation
 function calculateSM2(quality, repetitions, easeFactor, interval) {
@@ -333,15 +334,36 @@ export const useWordStore = defineStore('words', () => {
   }
 
   async function addCustomWord(wordData) {
-    if (!authStore.user) return
+    if (!authStore.user) return { success: false, error: '请先登录' }
 
     try {
+      // 检查单词是否已存在（不区分大小写）
+      const { data: existingWord, error: checkError } = await supabase
+        .from('words')
+        .select('id, spelling')
+        .ilike('spelling', wordData.spelling.trim())
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      if (existingWord) {
+        return { success: false, error: `单词 "${wordData.spelling}" 已存在`, duplicate: true }
+      }
+
+      // 验证单词拼写是否正确（使用 Dictionary API）
+      const wordValidation = await fetchWordData(wordData.spelling.trim())
+      
+      if (!wordValidation.definition && !wordValidation.phonetic) {
+        // API 验证失败，返回警告但不阻止添加（可能是自定义单词）
+        console.warn(`单词 "${wordData.spelling}" 无法通过拼写验证`)
+      }
+
       // 直接添加到words表（用户自定义单词）
       const { error } = await supabase
         .from('words')
         .insert({
-          spelling: wordData.spelling,
-          part_of_speech: wordData.partOfSpeech,
+          spelling: wordData.spelling.trim(),
+          part_of_speech: wordData.partOfSpeech || '',
           meaning: wordData.meaning,
           category: 'custom',
           created_by: authStore.user.id
@@ -351,6 +373,97 @@ export const useWordStore = defineStore('words', () => {
       return { success: true }
     } catch (error) {
       return { success: false, error: error.message }
+    }
+  }
+
+  // 验证单词拼写是否正确
+  async function validateWordSpelling(word) {
+    if (!word || !word.trim()) {
+      return { valid: false, message: '请输入单词' }
+    }
+
+    const cleanWord = word.trim().toLowerCase()
+    
+    // 使用 Dictionary API 验证
+    const result = await fetchWordData(cleanWord)
+    
+    if (result.definition || result.phonetic) {
+      return { 
+        valid: true, 
+        message: '单词拼写正确',
+        phonetic: result.phonetic,
+        definition: result.definition
+      }
+    } else {
+      return { 
+        valid: false, 
+        message: `无法确认单词 "${cleanWord}" 的拼写是否正确，请检查后重试`
+      }
+    }
+  }
+
+  // 批量添加单词（带重复检查和验证）
+  async function addCustomWordsBatch(wordsData) {
+    if (!authStore.user) return { success: false, error: '请先登录' }
+
+    const results = {
+      success: [],
+      duplicates: [],
+      invalid: [],
+      errors: []
+    }
+
+    for (const word of wordsData) {
+      try {
+        // 检查单词是否已存在
+        const { data: existingWord } = await supabase
+          .from('words')
+          .select('id, spelling')
+          .ilike('spelling', word.spelling.trim())
+          .maybeSingle()
+
+        if (existingWord) {
+          results.duplicates.push(word.spelling)
+          continue
+        }
+
+        // 验证单词拼写
+        const wordValidation = await fetchWordData(word.spelling.trim())
+        
+        if (!wordValidation.definition && !wordValidation.phonetic) {
+          results.invalid.push(word.spelling)
+          // 可以选择跳过无效单词，或者仍然添加
+          continue
+        }
+
+        // 添加单词
+        const { error } = await supabase
+          .from('words')
+          .insert({
+            spelling: word.spelling.trim(),
+            part_of_speech: word.partOfSpeech || '',
+            meaning: word.meaning,
+            category: 'custom',
+            created_by: authStore.user.id
+          })
+
+        if (error) {
+          results.errors.push({ word: word.spelling, error: error.message })
+        } else {
+          results.success.push(word.spelling)
+        }
+      } catch (error) {
+        results.errors.push({ word: word.spelling, error: error.message })
+      }
+    }
+
+    return {
+      success: results.success.length > 0,
+      successCount: results.success.length,
+      duplicatesCount: results.duplicates.length,
+      invalidCount: results.invalid.length,
+      errorCount: results.errors.length,
+      results
     }
   }
 
@@ -437,6 +550,8 @@ export const useWordStore = defineStore('words', () => {
     fetchTodayWords,
     submitReview,
     addCustomWord,
+    validateWordSpelling,
+    addCustomWordsBatch,
     getCustomWords,
     deleteCustomWord,
     approveCustomWord

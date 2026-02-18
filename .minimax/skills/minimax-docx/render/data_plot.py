@@ -1,11 +1,17 @@
 """Data visualization chart generation using matplotlib."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Sequence
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+except ImportError:
+    matplotlib = None
+    plt = None
 
 from .themes import PlotStyle, FOREST
 
@@ -32,6 +38,11 @@ class DataPlotter:
             height: Figure height in inches.
             dpi: Resolution for output images.
         """
+        if plt is None:
+            raise ImportError(
+                "matplotlib is required for chart rendering. "
+                "Install with: pip install matplotlib"
+            )
         self._style = style
         self._width = width
         self._height = height
@@ -84,19 +95,20 @@ class DataPlotter:
         Returns:
             Path to saved image.
         """
-        import numpy as np
-
         fig, ax = self._create_figure()
         self._setup_axes(ax, show_grid="y")
 
         n_groups = len(categories)
         n_series = len(datasets)
         bar_width = 0.8 / n_series
-        indices = np.arange(n_groups)
+        indices = list(range(n_groups))
 
         for i, (name, values) in enumerate(datasets):
             color = self._style.accent_at(i)
-            positions = indices + i * bar_width - (n_series - 1) * bar_width / 2
+            positions = [
+                idx + i * bar_width - (n_series - 1) * bar_width / 2
+                for idx in indices
+            ]
             bars = ax.bar(positions, values, bar_width, label=name, color=color)
 
             if show_values:
@@ -135,19 +147,20 @@ class DataPlotter:
         Returns:
             Path to saved image.
         """
-        import numpy as np
-
         fig, ax = self._create_figure()
         self._setup_axes(ax, show_grid="x")
 
         n_groups = len(categories)
         n_series = len(datasets)
         bar_height = 0.8 / n_series
-        indices = np.arange(n_groups)
+        indices = list(range(n_groups))
 
         for i, (name, values) in enumerate(datasets):
             color = self._style.accent_at(i)
-            positions = indices + i * bar_height - (n_series - 1) * bar_height / 2
+            positions = [
+                idx + i * bar_height - (n_series - 1) * bar_height / 2
+                for idx in indices
+            ]
             ax.barh(positions, values, bar_height, label=name, color=color)
 
         ax.set_yticks(indices)

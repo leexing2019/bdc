@@ -106,28 +106,42 @@
       </div>
 
       <!-- Add Manual Word -->
-      <div class="mt-4 flex items-center space-x-2">
-        <input
-          v-model="newWord.spelling"
-          placeholder="英文"
-          class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-        <input
-          v-model="newWord.partOfSpeech"
-          placeholder="词性"
-          class="w-20 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-        <input
-          v-model="newWord.meaning"
-          placeholder="中文"
-          class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
-        <button
-          @click="addManualWord"
-          class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-        >
-          添加
-        </button>
+      <div class="mt-4 space-y-2">
+        <!-- 验证错误提示 -->
+        <div v-if="validationError" class="text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+          {{ validationError }}
+        </div>
+        
+        <div class="flex items-center space-x-2">
+          <input
+            v-model="newWord.spelling"
+            @blur="newWord.spelling && validateWord(newWord.spelling)"
+            placeholder="英文"
+            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            :class="{'border-orange-500': validationError}"
+          />
+          <input
+            v-model="newWord.partOfSpeech"
+            placeholder="词性"
+            class="w-20 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          />
+          <input
+            v-model="newWord.meaning"
+            placeholder="中文"
+            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          />
+          <button
+            @click="addManualWord"
+            :disabled="validatingWord"
+            class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center"
+          >
+            <svg v-if="validatingWord" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ validatingWord ? '验证中' : '添加' }}
+          </button>
+        </div>
       </div>
 
       <!-- Submit Button -->
@@ -181,11 +195,38 @@ const fileInput = ref(null)
 const parsedWords = ref([])
 const submitting = ref(false)
 const showSuccess = ref(false)
+const validatingWord = ref(false)
+const validationError = ref('')
 const newWord = ref({
   spelling: '',
   partOfSpeech: '',
   meaning: ''
 })
+
+// 验证单个单词
+const validateWord = async (spelling) => {
+  if (!spelling || !spelling.trim()) {
+    return { valid: false, message: '请输入单词' }
+  }
+
+  validatingWord.value = true
+  validationError.value = ''
+
+  try {
+    const result = await wordStore.validateWordSpelling(spelling)
+    validatingWord.value = false
+    
+    if (!result.valid) {
+      validationError.value = result.message
+      return result
+    }
+    return result
+  } catch (error) {
+    validatingWord.value = false
+    validationError.value = '验证失败，请重试'
+    return { valid: false, message: '验证失败' }
+  }
+}
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -278,19 +319,64 @@ const clearParsed = () => {
   if (fileInput.value) fileInput.value.value = ''
 }
 
-const addManualWord = () => {
-  if (newWord.value.spelling && newWord.value.meaning) {
-    parsedWords.value.push({ ...newWord.value })
-    newWord.value = { spelling: '', partOfSpeech: '', meaning: '' }
+const addManualWord = async () => {
+  if (!newWord.value.spelling || !newWord.value.meaning) {
+    alert('请填写单词和释义')
+    return
   }
+
+  // 验证单词拼写
+  const validation = await validateWord(newWord.value.spelling)
+  if (!validation.valid) {
+    // 显示警告但不阻止添加（用户可以选择确认添加）
+    const confirmed = confirm(`${validation.message}\n\n是否仍然添加该单词？`)
+    if (!confirmed) return
+  }
+
+  // 检查是否已存在
+  const isDuplicate = parsedWords.value.some(
+    w => w.spelling.toLowerCase() === newWord.value.spelling.toLowerCase()
+  )
+  
+  if (isDuplicate) {
+    alert('该单词已存在于当前列表中')
+    return
+  }
+
+  parsedWords.value.push({ ...newWord.value })
+  newWord.value = { spelling: '', partOfSpeech: '', meaning: '' }
+  validationError.value = ''
 }
 
 const submitWords = async () => {
+  if (parsedWords.value.length === 0) {
+    alert('请先添加单词')
+    return
+  }
+
   submitting.value = true
   
   try {
-    for (const word of parsedWords.value) {
-      await wordStore.addCustomWord(word)
+    // 使用批量添加函数，会自动检查重复和验证
+    const result = await wordStore.addCustomWordsBatch(parsedWords.value)
+    
+    // 显示结果
+    let message = ''
+    if (result.successCount > 0) {
+      message += `成功添加 ${result.successCount} 个单词\n`
+    }
+    if (result.duplicatesCount > 0) {
+      message += `跳过 ${result.duplicatesCount} 个重复单词\n`
+    }
+    if (result.invalidCount > 0) {
+      message += `跳过 ${result.invalidCount} 个拼写错误的单词\n`
+    }
+    if (result.errorCount > 0) {
+      message += `${result.errorCount} 个单词添加失败\n`
+    }
+    
+    if (message) {
+      alert(message)
     }
     
     showSuccess.value = true

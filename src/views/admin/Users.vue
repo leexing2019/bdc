@@ -137,6 +137,15 @@
                   </svg>
                 </button>
                 <button
+                  @click="viewUserWords(user)"
+                  class="p-2 text-gray-400 hover:text-blue-600 transition"
+                  title="查看自定义单词"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </button>
+                <button
                   @click="deleteUser(user)"
                   class="p-2 text-gray-400 hover:text-red-600 transition"
                   title="删除用户"
@@ -195,6 +204,68 @@
         </div>
       </div>
     </div>
+
+    <!-- User Custom Words Modal -->
+    <div v-if="showUserWordsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-800">{{ selectedUser?.username }} 的自定义单词</h3>
+          <button @click="showUserWordsModal = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div v-if="loadingUserWords" class="flex-1 flex items-center justify-center">
+          <svg class="w-8 h-8 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        
+        <div v-else-if="userCustomWords.length === 0" class="flex-1 flex items-center justify-center text-gray-500">
+          该学生还没有上传自定义单词
+        </div>
+        
+        <div v-else class="flex-1 overflow-y-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr>
+                <th class="text-left py-2 px-3 text-sm font-medium text-gray-500">单词</th>
+                <th class="text-left py-2 px-3 text-sm font-medium text-gray-500">词性</th>
+                <th class="text-left py-2 px-3 text-sm font-medium text-gray-500">释义</th>
+                <th class="text-left py-2 px-3 text-sm font-medium text-gray-500">状态</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="word in userCustomWords" :key="word.id" class="hover:bg-gray50">
+                <td class="py-2 px-3 font-medium text-gray-800">{{ word.spelling }}</td>
+                <td class="py-2 px-3 text-gray-600">{{ word.part_of_speech }}</td>
+                <td class="py-2 px-3 text-gray-600">{{ word.meaning }}</td>
+                <td class="py-2 px-3">
+                  <span
+                    class="px-2 py-1 text-xs rounded-full"
+                    :class="word.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+                  >
+                    {{ word.status === 'approved' ? '已通过' : '待审核' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-4 pt-4 border-t">
+          <button
+            @click="showUserWordsModal = false"
+            class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -209,6 +280,12 @@ const filterStatus = ref('all')
 const showAddModal = ref(false)
 const editingUser = ref(null)
 const saving = ref(false)
+
+// 自定义单词相关状态
+const showUserWordsModal = ref(false)
+const selectedUser = ref(null)
+const userCustomWords = ref([])
+const loadingUserWords = ref(false)
 
 const userForm = ref({
   username: '',
@@ -420,6 +497,30 @@ const deleteUser = async (user) => {
   } catch (error) {
     console.error('删除用户失败:', error)
     alert('删除用户失败，请重试')
+  }
+}
+
+// 查看用户自定义单词
+const viewUserWords = async (user) => {
+  selectedUser.value = user
+  showUserWordsModal.value = true
+  loadingUserWords.value = true
+  userCustomWords.value = []
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_custom_words')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    
+    userCustomWords.value = data || []
+  } catch (error) {
+    console.error('获取用户单词失败:', error)
+  } finally {
+    loadingUserWords.value = false
   }
 }
 

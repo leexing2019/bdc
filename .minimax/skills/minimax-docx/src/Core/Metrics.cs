@@ -34,6 +34,18 @@ public static class Metrics
     /// <summary>A5 paper height: 210mm = 11906 twips</summary>
     public const int A5Height = 11906;
 
+    /// <summary>B5 paper width: 176mm = 9979 twips</summary>
+    public const int B5Width = 9979;
+
+    /// <summary>B5 paper height: 250mm = 14175 twips</summary>
+    public const int B5Height = 14175;
+
+    /// <summary>B4 paper width: 250mm = 14175 twips</summary>
+    public const int B4Width = 14175;
+
+    /// <summary>B4 paper height: 353mm = 20025 twips</summary>
+    public const int B4Height = 20025;
+
     /// <summary>US Letter width: 8.5in = 12240 twips</summary>
     public const int LetterWidth = 12240;
 
@@ -59,6 +71,24 @@ public static class Metrics
 
     /// <summary>A3 height in EMU: 420mm</summary>
     public const long A3HeightEmu = 15120000L;
+
+    /// <summary>A5 width in EMU: 148mm</summary>
+    public const long A5WidthEmu = 5328000L;
+
+    /// <summary>A5 height in EMU: 210mm</summary>
+    public const long A5HeightEmu = 7560000L;
+
+    /// <summary>B5 width in EMU: 176mm</summary>
+    public const long B5WidthEmu = 6336000L;
+
+    /// <summary>B5 height in EMU: 250mm</summary>
+    public const long B5HeightEmu = 9000000L;
+
+    /// <summary>B4 width in EMU: 250mm</summary>
+    public const long B4WidthEmu = 9000000L;
+
+    /// <summary>B4 height in EMU: 353mm</summary>
+    public const long B4HeightEmu = 12708000L;
 
     /// <summary>
     /// Converts typographic points to twips.

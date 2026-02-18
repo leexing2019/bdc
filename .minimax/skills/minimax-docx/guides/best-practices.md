@@ -64,3 +64,55 @@ Use audience and decision type to choose the skeleton:
 | Secondary heading (H2) | `KeepNext` | Bind heading with following content |
 | Pre-table text | `KeepNext` | Keep introductory text with table |
 | Body paragraphs | `WidowControl` | Prevent orphan/widow lines |
+
+## 6. Small Paper Sizes (A5, B5)
+
+When designing for A5/B5 paper, be aware of reduced vertical space:
+
+| Paper | Height vs A4 | Practical Impact |
+|-------|--------------|------------------|
+| A5 | ~70% of A4 | Cover designs that work on A4 may overflow |
+| B5 | ~84% of A4 | Moderate reduction, usually safe |
+
+### Cover Page Guidelines for Small Paper
+
+**Problem**: Using `SpacingBetweenLines` (Gaps) to simulate vertical centering is fragile on small paper.
+
+**Solution**: Always isolate cover pages with explicit section breaks:
+
+```csharp
+// After cover content, end the section
+body.Append(new Paragraph(
+    new ParagraphProperties(
+        new SectionProperties(
+            new SectionType { Val = SectionMarkValues.NextPage }
+        )
+    )
+));
+```
+
+**Reference template**: `src/Templates/PoetryCollection.cs` demonstrates this pattern.
+
+### Reduced Spacing Recommendations
+
+| Element | A4 Value | A5/B5 Value |
+|---------|----------|-------------|
+| Cover top gap | 150pt | 60-80pt |
+| Paragraph after | 10pt | 6-8pt |
+| Section spacing | 24pt | 14-18pt |
+
+## 7. TOC Hierarchy (Outline Levels)
+
+TOC entries are determined by `OutlineLevel` in paragraph properties:
+
+| OutlineLevel | TOC Display | Typical Usage |
+|--------------|-------------|---------------|
+| 0 | Level 1 | Major chapters, categories |
+| 1 | Level 2 | Sections within chapters |
+| 2 | Level 3 | Subsections |
+
+**Common mistake**: Setting all titles to the same level causes flat TOC structure.
+
+**Fix**: Ensure category/chapter headings use `OutlineLevel=0`, item titles use `OutlineLevel=1`.
+
+See `src/Templates/PoetryCollection.cs` for correct hierarchy example.
