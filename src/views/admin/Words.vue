@@ -1407,21 +1407,20 @@ const fetchWordInfo = async () => {
   try {
     console.log('开始获取单词信息:', wordForm.value.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
     const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value)
-    console.log('获取到的数据:', data)
+    console.log('获取到的完整数据:', JSON.stringify(data, null, 2))
     
     // 音标填充到音标字段
     if (data.phonetic && !wordForm.value.phonetic) {
       wordForm.value.phonetic = data.phonetic
+      console.log('获取到音标:', data.phonetic)
     }
     
     // 只填充真正的例句到例句字段，不包含释义
     if (data.example && !wordForm.value.example_sentence) {
       wordForm.value.example_sentence = data.example
       console.log('成功获取例句:', data.example)
-    } else if (!data.example && deepseekApiKey.value) {
-      console.log('未能从Dictionary API获取例句，DeepSeek API Key已配置但未生成例句')
-    } else if (!deepseekApiKey.value) {
-      console.log('未配置DeepSeek API Key，无法生成例句')
+    } else {
+      console.log('未能获取例句 - Dictionary API返回例句:', data.example, 'DeepSeek API Key:', deepseekApiKey.value ? '已配置' : '未配置')
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
