@@ -861,9 +861,20 @@ const validateWordSpelling = async (word) => {
 }
 
 // 批量验证单词列表
-const validateWordsList = async (words) => {
+const validateWordsList = async (words, categoryForValidation = null) => {
   const results = []
   const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
+  
+  // 获取该词库中已存在的单词，用于去重检查
+  const targetCategory = categoryForValidation || importCategory.value
+  const { data: existingWords } = await supabase
+    .from('words')
+    .select('spelling')
+    .eq('category', targetCategory)
+  
+  const existingSpellings = new Set(
+    (existingWords || []).map(w => w.spelling.toLowerCase())
+  )
   
   alert(`开始验证 ${words.length} 个单词，请等待...`)
   
@@ -893,6 +904,12 @@ const validateWordsList = async (words) => {
     // 检查是否以连字符开头或结尾
     if (cleanWord.startsWith('-') || cleanWord.endsWith('-')) {
       results.push({ ...word, valid: false, reason: '以连字符开头或结尾' })
+      continue
+    }
+    
+    // 检查是否已存在于词库中
+    if (existingSpellings.has(cleanWord)) {
+      results.push({ ...word, valid: false, reason: '该词库中已存在' })
       continue
     }
     
@@ -1189,12 +1206,30 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
   const categoryToUse = targetCategory || importCategory.value
   
   try {
+    // 先获取该词库中已存在的单词，用于去重检查
+    const { data: existingWords } = await supabase
+      .from('words')
+      .select('spelling')
+      .eq('category', categoryToUse)
+    
+    const existingSpellings = new Set(
+      (existingWords || []).map(w => w.spelling.toLowerCase())
+    )
+    
     const total = wordsToImport.length
     let successCount = 0
     let failCount = 0
+    let duplicateCount = 0
     
     for (let i = 0; i < total; i++) {
       const word = wordsToImport[i]
+      const spellingLower = word.spelling.toLowerCase()
+      
+      // 检查是否已存在
+      if (existingSpellings.has(spellingLower)) {
+        duplicateCount++
+        continue
+      }
       
       // 如果没有例句或音标，自动获取
       let exampleSentence = word.example_sentence
@@ -1227,6 +1262,8 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
         failCount++
       } else {
         successCount++
+        // 添加到已存在集合中，避免同一批次中重复导入
+        existingSpellings.add(spellingLower)
       }
     }
     
@@ -1241,7 +1278,12 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
     importWords.value = []
     wordValidationResults.value = []
     pendingImportWords.value = []
-    alert(`导入完成！成功: ${successCount} 个，失败: ${failCount} 个`)
+    
+    let message = `导入完成！成功: ${successCount} 个，失败: ${failCount} 个`
+    if (duplicateCount > 0) {
+      message += `，重复: ${duplicateCount} 个`
+    }
+    alert(message)
   } catch (error) {
     console.error('Import error:', error)
     alert('导入失败，请重试')
@@ -1717,7 +1759,7 @@ const importWordsToDb = async () => {
   try {
     // 验证所有单词
     console.log('开始验证单词，共', importWords.value.length, '个')
-    const results = await validateWordsList(importWords.value)
+    const results = await validateWordsList(importWords.value, importCategory.value)
     wordValidationResults.value = results
     
     // 统计有效和无效单词
@@ -1774,7 +1816,7 @@ const createCategory = async () => {
     try {
       // 验证所有单词（与批量导入相同的验证逻辑）
       console.log('新建词库：开始验证单词，共', importWords.value.length, '个')
-      const results = await validateWordsList(importWords.value)
+      const results = await validateWordsList(importWords.value, categoryName)
       wordValidationResults.value = results
       
       // 统计有效和无效单词
