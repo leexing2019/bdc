@@ -866,15 +866,16 @@ const validateWordsList = async (words, categoryForValidation = null) => {
   const results = []
   const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
   
-  // 获取该词库中已存在的单词，用于去重检查
+  // 获取该词库中已存在的单词，用于去重检查（同时检查拼写和词性）
   const targetCategory = categoryForValidation || importCategory.value
   const { data: existingWords } = await supabase
     .from('words')
-    .select('spelling')
+    .select('spelling, part_of_speech')
     .eq('category', targetCategory)
   
+  // 使用 拼写|词性 作为唯一键，词性为空时视为同一词性
   const existingSpellings = new Set(
-    (existingWords || []).map(w => w.spelling.toLowerCase())
+    (existingWords || []).map(w => `${w.spelling.toLowerCase()}|${(w.part_of_speech || '').toLowerCase()}`)
   )
   
   alert(`开始验证 ${words.length} 个单词，请等待...`)
@@ -908,8 +909,9 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       continue
     }
     
-    // 检查是否已存在于词库中
-    if (existingSpellings.has(cleanWord)) {
+    // 检查是否已存在于词库中（同时检查拼写和词性）
+    const wordKey = `${cleanWord}|${(word.part_of_speech || '').toLowerCase()}`
+    if (existingSpellings.has(wordKey)) {
       results.push({ ...word, valid: false, reason: '该词库中已存在' })
       continue
     }
@@ -1207,14 +1209,15 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
   const categoryToUse = targetCategory || importCategory.value
   
   try {
-    // 先获取该词库中已存在的单词，用于去重检查
+    // 先获取该词库中已存在的单词，用于去重检查（同时检查拼写和词性）
     const { data: existingWords } = await supabase
       .from('words')
-      .select('spelling')
+      .select('spelling, part_of_speech')
       .eq('category', categoryToUse)
     
+    // 使用 拼写|词性 作为唯一键
     const existingSpellings = new Set(
-      (existingWords || []).map(w => w.spelling.toLowerCase())
+      (existingWords || []).map(w => `${w.spelling.toLowerCase()}|${(w.part_of_speech || '').toLowerCase()}`)
     )
     
     const total = wordsToImport.length
@@ -1225,9 +1228,11 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
     for (let i = 0; i < total; i++) {
       const word = wordsToImport[i]
       const spellingLower = word.spelling.toLowerCase()
+      const partOfSpeech = (word.part_of_speech || '').toLowerCase()
+      const wordKey = `${spellingLower}|${partOfSpeech}`
       
-      // 检查是否已存在
-      if (existingSpellings.has(spellingLower)) {
+      // 检查是否已存在（同时检查拼写和词性）
+      if (existingSpellings.has(wordKey)) {
         duplicateCount++
         continue
       }
@@ -1238,8 +1243,8 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
       
       if (!exampleSentence || !phonetic) {
         try {
-          console.log('开始获取单词数据:', word.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
-          const data = await fetchWordData(word.spelling, deepseekApiKey.value)
+          console.log('开始获取单词数据:', word.spelling, '词性:', word.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+          const data = await fetchWordData(word.spelling, deepseekApiKey.value, word.part_of_speech)
           console.log('获取到的数据:', word.spelling, data)
           
           if (!phonetic && data.phonetic) {
@@ -1274,8 +1279,8 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
         failCount++
       } else {
         successCount++
-        // 添加到已存在集合中，避免同一批次中重复导入
-        existingSpellings.add(spellingLower)
+        // 添加到已存在集合中，避免同一批次中重复导入（使用拼写|词性作为键）
+        existingSpellings.add(wordKey)
       }
     }
     
@@ -1414,8 +1419,8 @@ const fetchWordInfo = async () => {
   
   fetchingWord.value = true
   try {
-    console.log('开始获取单词信息:', wordForm.value.spelling, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
-    const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value)
+    console.log('开始获取单词信息:', wordForm.value.spelling, '词性:', wordForm.value.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+    const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value, wordForm.value.part_of_speech)
     console.log('获取到的完整数据:', JSON.stringify(data, null, 2))
     
     // 音标填充到音标字段
@@ -1982,8 +1987,8 @@ const batchUpdateExamples = async () => {
     for (let i = 0; i < wordsWithoutExamples.length; i++) {
       const word = wordsWithoutExamples[i]
       
-      // 获取API数据
-      const data = await fetchWordData(word.spelling, deepseekApiKey.value)
+      // 获取API数据（传递词性以获取对应词性的例句）
+      const data = await fetchWordData(word.spelling, deepseekApiKey.value, word.part_of_speech)
       
       const updateData = {}
       

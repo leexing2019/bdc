@@ -70,16 +70,25 @@ export async function testDeepSeekApi(apiKey) {
  * @param {string} word - The word to generate example for
  * @param {string} definition - Optional definition to provide context
  * @param {string} apiKey - DeepSeek API key
+ * @param {string} partOfSpeech - Optional part of speech (e.g., 'intransitive verb', 'transitive verb')
  * @returns {Promise<string|null>}
  */
-export async function generateExampleWithDeepSeek(word, definition, apiKey) {
+export async function generateExampleWithDeepSeek(word, definition, apiKey, partOfSpeech = null) {
   if (!apiKey || !word) {
     return null
   }
 
-  const prompt = definition
-    ? `Generate one natural English example sentence using the word "${word}" in context. The word means: "${definition}". Just return the example sentence, nothing else.`
-    : `Generate one natural English example sentence using the word "${word}" in context. Just return the example sentence, nothing else.`
+  // 构建prompt，包含词性信息
+  let prompt = ''
+  if (partOfSpeech && definition) {
+    prompt = `Generate one natural English example sentence using the word "${word}" as a ${partOfSpeech}. The word means: "${definition}". Just return the example sentence, nothing else.`
+  } else if (partOfSpeech) {
+    prompt = `Generate one natural English example sentence using the word "${word}" as a ${partOfSpeech}. Just return the example sentence, nothing else.`
+  } else if (definition) {
+    prompt = `Generate one natural English example sentence using the word "${word}" in context. The word means: "${definition}". Just return the example sentence, nothing else.`
+  } else {
+    prompt = `Generate one natural English example sentence using the word "${word}" in context. Just return the example sentence, nothing else.`
+  }
 
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -118,12 +127,50 @@ export async function generateExampleWithDeepSeek(word, definition, apiKey) {
 }
 
 /**
+ * 词性映射表：用户输入的词性 -> Dictionary API 返回的词性
+ */
+const partOfSpeechMapping = {
+  'vi.': 'intransitive verb',
+  'vt.': 'transitive verb',
+  'v.': 'verb',
+  'verb': 'verb',
+  'n.': 'noun',
+  'noun': 'noun',
+  'adj.': 'adjective',
+  'adjective': 'adjective',
+  'adv.': 'adverb',
+  'adverb': 'adverb',
+  'pron.': 'pronoun',
+  'pronoun': 'pronoun',
+  'num.': 'numeral',
+  'numeral': 'numeral',
+  'prep.': 'preposition',
+  'preposition': 'preposition',
+  'conj.': 'conjunction',
+  'conjunction': 'conjunction',
+  'interj.': 'interjection',
+  'interjection': 'interjection'
+}
+
+/**
+ * 将用户输入的词性转换为Dictionary API格式
+ * @param {string} pos - 用户输入的词性 (如 vi., vt., n., adj.)
+ * @returns {string} - 转换后的词性 (如 verb, noun, adjective)
+ */
+function normalizePartOfSpeech(pos) {
+  if (!pos) return null
+  const normalized = pos.toLowerCase().trim()
+  return partOfSpeechMapping[normalized] || normalized
+}
+
+/**
  * Fetch word data from Dictionary API, with DeepSeek fallback for examples
  * @param {string} word - The word to look up
  * @param {string} deepseekApiKey - Optional DeepSeek API key for example generation
+ * @param {string} partOfSpeech - Optional part of speech to match (e.g., 'vi.', 'vt.', 'n.')
  * @returns {Promise<{definition: string|null, example: string|null, phonetic: string|null}>}
  */
-export async function fetchWordData(word, deepseekApiKey = null) {
+export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = null) {
   if (!word || !word.trim()) {
     return { definition: null, example: null, phonetic: null }
   }
@@ -138,6 +185,10 @@ export async function fetchWordData(word, deepseekApiKey = null) {
     cleanWord = cleanWord.split(/[\s_]/)[0]
   }
 
+  // 转换用户输入的词性
+  const targetPOS = normalizePartOfSpeech(partOfSpeech)
+  console.log('目标词性:', partOfSpeech, '->', targetPOS)
+
   try {
     const response = await fetch(`${API_BASE}/${encodeURIComponent(cleanWord)}`)
 
@@ -146,8 +197,8 @@ export async function fetchWordData(word, deepseekApiKey = null) {
       console.warn(`Dictionary API error for ${cleanWord}: ${response.status}`)
       // Try DeepSeek if API key provided
       if (deepseekApiKey) {
-        // 使用原始输入词生成例句
-        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
+        // 使用原始输入词生成例句，带上词性信息
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
         return { definition: null, example: example, phonetic: null }
       }
       return { definition: null, example: null, phonetic: null }
@@ -158,7 +209,7 @@ export async function fetchWordData(word, deepseekApiKey = null) {
     if (!data || !data[0]) {
       // No data returned
       if (deepseekApiKey) {
-        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
         return { definition: null, example: example, phonetic: null }
       }
       return { definition: null, example: null, phonetic: null }
@@ -180,9 +231,37 @@ export async function fetchWordData(word, deepseekApiKey = null) {
       }
     }
 
-    // Extract definition and example from meanings
+    // Extract definition and example from meanings, matching the part of speech
     const meanings = wordData.meanings || []
-
+    
+    // 首先尝试匹配用户指定的词性
+    if (targetPOS) {
+      for (const meaning of meanings) {
+        const meaningPOS = meaning.partOfSpeech?.toLowerCase()
+        // 检查词性是否匹配（包括模糊匹配）
+        if (meaningPOS && (meaningPOS === targetPOS || meaningPOS.includes(targetPOS) || targetPOS.includes(meaningPOS))) {
+          const definitions = meaning.definitions || []
+          for (const def of definitions) {
+            if (def.definition) {
+              let example = def.example || null
+              
+              // If no example from Dictionary API, try DeepSeek
+              if (!example && deepseekApiKey) {
+                example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
+              }
+              
+              return {
+                definition: def.definition,
+                example: example,
+                phonetic: phonetic
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 如果没有匹配到指定词性，返回第一个有例句的
     for (const meaning of meanings) {
       const definitions = meaning.definitions || []
 
@@ -192,7 +271,7 @@ export async function fetchWordData(word, deepseekApiKey = null) {
           
           // If no example from Dictionary API, try DeepSeek
           if (!example && deepseekApiKey) {
-            example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey)
+            example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
           }
           
           return {
@@ -206,7 +285,7 @@ export async function fetchWordData(word, deepseekApiKey = null) {
 
     // No definition found, try DeepSeek for example
     if (deepseekApiKey) {
-      const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
+      const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
       return { definition: null, example: example, phonetic: phonetic }
     }
 
@@ -216,7 +295,7 @@ export async function fetchWordData(word, deepseekApiKey = null) {
     // Try DeepSeek as fallback on error (网络错误、CORS错误等)
     try {
       if (deepseekApiKey) {
-        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey)
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
         return { definition: null, example: example, phonetic: null }
       }
     } catch (deepseekError) {

@@ -69,7 +69,6 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">用户名</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">每日任务</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">状态</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">注册时间</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">学习进度</th>
@@ -86,7 +85,6 @@
                   <span class="font-medium text-gray-800">{{ user.username }}</span>
                 </div>
               </td>
-              <td class="py-3 px-4 text-gray-600">{{ user.daily_limit }} 词/天</td>
               <td class="py-3 px-4">
                 <span
                   class="px-2 py-1 text-xs rounded-full"
@@ -120,6 +118,7 @@
                 <button
                   @click="editUser(user)"
                   class="p-2 text-gray-400 hover:text-primary-600 transition"
+                  title="编辑用户名"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
