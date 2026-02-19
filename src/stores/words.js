@@ -381,10 +381,10 @@ export const useWordStore = defineStore('words', () => {
       // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
       // 同时检查拼写和词性，相同拼写+相同词性视为重复
       const trimmedSpelling = wordData.spelling.trim().toLowerCase()
-      const partOfSpeech = wordData.partOfSpeech || ''
+      const partOfSpeech = (wordData.partOfSpeech || '').trim()
       
       // 词性匹配逻辑：
-      // 1. 如果用户提供了词性，只匹配相同词性的记录
+      // 1. 如果用户提供了词性，匹配相同词性（包括空字符串）
       // 2. 如果用户没有提供词性，匹配词性为空或null的记录
       let query = supabase
         .from('words')
@@ -394,8 +394,8 @@ export const useWordStore = defineStore('words', () => {
         .ilike('spelling', trimmedSpelling)
       
       if (partOfSpeech) {
-        // 有词性：精确匹配
-        query = query.eq('part_of_speech', partOfSpeech)
+        // 有词性：使用 ilike 进行大小写不敏感匹配
+        query = query.ilike('part_of_speech', partOfSpeech)
       } else {
         // 无词性：匹配空字符串或null
         query = query.or('part_of_speech.is.null,part_of_speech.eq.')
@@ -504,10 +504,10 @@ export const useWordStore = defineStore('words', () => {
         // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
         // 同时检查拼写和词性，相同拼写+相同词性视为重复
         const trimmedSpelling = word.spelling.trim().toLowerCase()
-        const partOfSpeech = word.partOfSpeech || ''
+        const partOfSpeech = (word.partOfSpeech || '').trim()
         
         // 词性匹配逻辑：
-        // 1. 如果用户提供了词性，只匹配相同词性的记录
+        // 1. 如果用户提供了词性，匹配相同词性（包括空字符串）
         // 2. 如果用户没有提供词性，匹配词性为空或null的记录
         let query = supabase
           .from('words')
@@ -517,8 +517,8 @@ export const useWordStore = defineStore('words', () => {
           .ilike('spelling', trimmedSpelling)
         
         if (partOfSpeech) {
-          // 有词性：精确匹配
-          query = query.eq('part_of_speech', partOfSpeech)
+          // 有词性：使用 ilike 进行大小写不敏感匹配，并处理可能的空格问题
+          query = query.ilike('part_of_speech', partOfSpeech)
         } else {
           // 无词性：匹配空字符串或null
           query = query.or('part_of_speech.is.null,part_of_speech.eq.')
