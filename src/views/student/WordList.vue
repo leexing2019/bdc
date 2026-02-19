@@ -24,17 +24,30 @@
       </button>
     </div>
 
-    <!-- Search -->
-    <div class="relative">
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="搜索单词..."
-        class="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-      />
-      <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
+    <!-- Search & Batch Actions -->
+    <div class="flex items-center space-x-4">
+      <div class="flex-1 relative">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索单词..."
+          class="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+        />
+        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+      <!-- 批量删除按钮（仅在自行导入标签下显示） -->
+      <button
+        v-if="activeTab === 'custom' && selectedWords.length > 0"
+        @click="batchDeleteWords"
+        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        删除选中 ({{ selectedWords.length }})
+      </button>
     </div>
 
     <!-- Word List -->
@@ -43,9 +56,20 @@
         v-for="word in filteredWords"
         :key="word.id"
         class="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+        :class="{'ring-2 ring-primary-500': selectedWords.includes(word.id)}"
         @click="selectedWord = word"
       >
         <div class="flex items-start justify-between">
+          <!-- 复选框（仅自行导入的单词） -->
+          <div class="flex items-start mr-2" v-if="word.source === 'custom'">
+            <input
+              type="checkbox"
+              :value="word.id"
+              v-model="selectedWords"
+              @click.stop
+              class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 mt-1"
+            />
+          </div>
           <div class="flex-1">
             <div class="flex items-center space-x-2">
               <h3 class="text-lg font-semibold text-gray-800">{{ word.spelling }}</h3>
@@ -252,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useWordStore } from '@/stores/words'
 import { supabase } from '@/lib/supabase'
 
@@ -265,11 +289,17 @@ onMounted(async () => {
   }
 })
 
+// 切换标签时清除选择
+watch(activeTab, () => {
+  selectedWords.value = []
+})
+
 const activeTab = ref('all')
 const searchQuery = ref('')
 const selectedWord = ref(null)
 const showEditModal = ref(false)
 const editingWord = ref({})
+const selectedWords = ref([]) // 批量选择
 
 const tabs = [
   { label: '全部', value: 'all' },
@@ -396,6 +426,41 @@ const deleteWord = async (word) => {
     alert('单词删除成功！')
   } catch (error) {
     console.error('删除单词失败:', error)
+    alert('删除失败，请重试')
+  }
+}
+
+// 批量删除单词
+const batchDeleteWords = async () => {
+  if (selectedWords.value.length === 0) return
+  
+  if (!confirm(`确定要删除选中的 ${selectedWords.value.length} 个单词吗？此操作不可恢复。`)) {
+    return
+  }
+  
+  try {
+    // 批量删除单词
+    const { error } = await supabase
+      .from('words')
+      .delete()
+      .in('id', selectedWords.value)
+    
+    if (error) throw error
+    
+    // 批量删除用户进度
+    await supabase
+      .from('user_word_progress')
+      .delete()
+      .in('word_id', selectedWords.value)
+    
+    // 清空选择
+    selectedWords.value = []
+    
+    // 刷新单词列表
+    await wordStore.fetchWords()
+    alert('批量删除成功！')
+  } catch (error) {
+    console.error('批量删除失败:', error)
     alert('删除失败，请重试')
   }
 }
