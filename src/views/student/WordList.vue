@@ -282,6 +282,13 @@ import { supabase } from '@/lib/supabase'
 
 const wordStore = useWordStore()
 
+const activeTab = ref('all')
+const searchQuery = ref('')
+const selectedWord = ref(null)
+const showEditModal = ref(false)
+const editingWord = ref({})
+const selectedWords = ref([]) // 批量选择
+
 // 页面加载时获取单词数据
 onMounted(async () => {
   if (wordStore.words.length === 0) {
@@ -293,13 +300,6 @@ onMounted(async () => {
 watch(activeTab, () => {
   selectedWords.value = []
 })
-
-const activeTab = ref('all')
-const searchQuery = ref('')
-const selectedWord = ref(null)
-const showEditModal = ref(false)
-const editingWord = ref({})
-const selectedWords = ref([]) // 批量选择
 
 const tabs = [
   { label: '全部', value: 'all' },
