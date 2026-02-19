@@ -379,18 +379,34 @@ export const useWordStore = defineStore('words', () => {
 
     try {
       // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
-      const { data: existingWord, error: checkError } = await supabase
+      // 同时检查拼写和词性，相同拼写+相同词性视为重复
+      const trimmedSpelling = wordData.spelling.trim().toLowerCase()
+      const partOfSpeech = wordData.partOfSpeech || ''
+      
+      // 词性匹配逻辑：
+      // 1. 如果用户提供了词性，只匹配相同词性的记录
+      // 2. 如果用户没有提供词性，匹配词性为空或null的记录
+      let query = supabase
         .from('words')
-        .select('id, spelling')
+        .select('id, spelling, part_of_speech')
         .eq('category', 'custom')
         .eq('created_by', authStore.user.id)
-        .ilike('spelling', wordData.spelling.trim())
-        .maybeSingle()
+        .ilike('spelling', trimmedSpelling)
+      
+      if (partOfSpeech) {
+        // 有词性：精确匹配
+        query = query.eq('part_of_speech', partOfSpeech)
+      } else {
+        // 无词性：匹配空字符串或null
+        query = query.or('part_of_speech.is.null,part_of_speech.eq.')
+      }
+      
+      const { data: existingWord, error: checkError } = await query.maybeSingle()
 
       if (checkError) throw checkError
 
       if (existingWord) {
-        return { success: false, error: `单词 "${wordData.spelling}" 已存在于您的个人词库中`, duplicate: true }
+        return { success: false, error: `单词 "${wordData.spelling}"（${wordData.partOfSpeech || '未标注词性'}）已存在于您的个人词库中`, duplicate: true }
       }
 
       // 验证单词拼写并获取例句
@@ -486,16 +502,32 @@ export const useWordStore = defineStore('words', () => {
     for (const word of wordsData) {
       try {
         // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
-        const { data: existingWord } = await supabase
+        // 同时检查拼写和词性，相同拼写+相同词性视为重复
+        const trimmedSpelling = word.spelling.trim().toLowerCase()
+        const partOfSpeech = word.partOfSpeech || ''
+        
+        // 词性匹配逻辑：
+        // 1. 如果用户提供了词性，只匹配相同词性的记录
+        // 2. 如果用户没有提供词性，匹配词性为空或null的记录
+        let query = supabase
           .from('words')
-          .select('id, spelling')
+          .select('id, spelling, part_of_speech')
           .eq('category', 'custom')
           .eq('created_by', authStore.user.id)
-          .ilike('spelling', word.spelling.trim())
-          .maybeSingle()
+          .ilike('spelling', trimmedSpelling)
+        
+        if (partOfSpeech) {
+          // 有词性：精确匹配
+          query = query.eq('part_of_speech', partOfSpeech)
+        } else {
+          // 无词性：匹配空字符串或null
+          query = query.or('part_of_speech.is.null,part_of_speech.eq.')
+        }
+        
+        const { data: existingWord } = await query.maybeSingle()
 
         if (existingWord) {
-          results.duplicates.push(word.spelling)
+          results.duplicates.push(`${word.spelling}（${word.partOfSpeech || '未标注词性'}）`)
           continue
         }
 

@@ -297,7 +297,7 @@ onMounted(async () => {
 })
 
 // 切换标签时清除选择
-watch(activeTab, () => {
+watch(() => activeTab.value, () => {
   selectedWords.value = []
 })
 
