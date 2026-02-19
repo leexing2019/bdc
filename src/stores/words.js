@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
-import { fetchWordData } from '@/utils/dictionaryService'
+import { fetchWordData, generateExampleWithDeepSeek } from '@/utils/dictionaryService'
 
 // SM-2 Algorithm Implementation
 function calculateSM2(quality, repetitions, easeFactor, interval) {
@@ -112,14 +112,53 @@ export const useWordStore = defineStore('words', () => {
     
     loading.value = true
     try {
-      // Fetch all words
-      const { data: wordsData, error: wordsError } = await supabase
+      const userId = authStore.user.id
+      
+      // 首先获取用户的词库设置
+      const { data: userSettings } = await supabase
+        .from('user_settings')
+        .select('category')
+        .eq('user_id', userId)
+        .maybeSingle()
+      
+      const userCategory = userSettings?.category
+      
+      // 查询1：获取公共词库单词
+      let commonQuery = supabase
         .from('words')
         .select('*')
+        .neq('category', 'custom')
+        .order('created_at', { ascending: false })
+      
+      // 如果用户有特定的词库分配，只加载该词库
+      if (userCategory && userCategory !== 'all') {
+        commonQuery = commonQuery.eq('category', userCategory)
+      }
+      
+      const { data: commonWords, error: commonError } = await commonQuery
+
+      if (commonError) throw commonError
+      
+      // 查询2：获取用户自己添加的单词（custom分类且created_by = 当前用户）
+      const { data: customWords, error: customError } = await supabase
+        .from('words')
+        .select('*')
+        .eq('category', 'custom')
+        .eq('created_by', userId)
         .order('created_at', { ascending: false })
 
-      if (wordsError) throw wordsError
-      words.value = wordsData || []
+      if (customError) throw customError
+      
+      // 合并结果
+      const allWords = [...(commonWords || []), ...(customWords || [])]
+      
+      // Add source field to distinguish between institution and custom words
+      // custom category = user self-imported
+      // other categories = teacher-assigned
+      words.value = allWords.map(word => ({
+        ...word,
+        source: word.category === 'custom' ? 'custom' : 'institution'
+      }))
 
       // Fetch user's progress
       const { data: progressData, error: progressError } = await supabase
@@ -205,6 +244,7 @@ export const useWordStore = defineStore('words', () => {
       const combinedWords = [
         ...(reviewWords || []).map(p => ({
           ...p.word,
+          source: p.word.category === 'custom' ? 'custom' : 'institution',
           progress: {
             id: p.id,
             ease_factor: p.ease_factor,
@@ -217,6 +257,7 @@ export const useWordStore = defineStore('words', () => {
         })),
         ...(newWords || []).map(w => ({
           ...w,
+          source: w.category === 'custom' ? 'custom' : 'institution',
           progress: null,
           isNew: true
         }))
@@ -337,34 +378,63 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return { success: false, error: '请先登录' }
 
     try {
-      // 检查单词是否已存在（不区分大小写）
+      // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
       const { data: existingWord, error: checkError } = await supabase
         .from('words')
         .select('id, spelling')
+        .eq('category', 'custom')
+        .eq('created_by', authStore.user.id)
         .ilike('spelling', wordData.spelling.trim())
         .maybeSingle()
 
       if (checkError) throw checkError
 
       if (existingWord) {
-        return { success: false, error: `单词 "${wordData.spelling}" 已存在`, duplicate: true }
+        return { success: false, error: `单词 "${wordData.spelling}" 已存在于您的个人词库中`, duplicate: true }
       }
 
-      // 验证单词拼写是否正确（使用 Dictionary API）
+      // 验证单词拼写并获取例句
+      let exampleSentence = ''
+      let phonetic = ''
       const wordValidation = await fetchWordData(wordData.spelling.trim())
       
-      if (!wordValidation.definition && !wordValidation.phonetic) {
-        // API 验证失败，返回警告但不阻止添加（可能是自定义单词）
-        console.warn(`单词 "${wordData.spelling}" 无法通过拼写验证`)
+      if (wordValidation.definition || wordValidation.phonetic) {
+        phonetic = wordValidation.phonetic || ''
+        // 获取例句（注意：API返回的是example而非examples）
+        if (wordValidation.example) {
+          exampleSentence = wordValidation.example
+        }
       }
 
-      // 直接添加到words表（用户自定义单词）
+      // 如果没有从API获取到例句，尝试使用DeepSeek生成
+      if (!exampleSentence) {
+        const apiKey = localStorage.getItem('smartmemo_deepseek_key')
+        if (apiKey) {
+          try {
+            const generatedExample = await generateExampleWithDeepSeek(
+              wordData.spelling.trim(),
+              wordData.meaning,
+              apiKey,
+              wordData.partOfSpeech || null
+            )
+            if (generatedExample) {
+              exampleSentence = generatedExample
+            }
+          } catch (e) {
+            console.warn('DeepSeek例句生成失败:', e)
+          }
+        }
+      }
+
+      // 直接添加到words表（用户自定义单词），包含例句和音标
       const { error } = await supabase
         .from('words')
         .insert({
           spelling: wordData.spelling.trim(),
           part_of_speech: wordData.partOfSpeech || '',
           meaning: wordData.meaning,
+          phonetic: phonetic,
+          example_sentence: exampleSentence,
           category: 'custom',
           created_by: authStore.user.id
         })
@@ -415,10 +485,12 @@ export const useWordStore = defineStore('words', () => {
 
     for (const word of wordsData) {
       try {
-        // 检查单词是否已存在
+        // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
         const { data: existingWord } = await supabase
           .from('words')
           .select('id, spelling')
+          .eq('category', 'custom')
+          .eq('created_by', authStore.user.id)
           .ilike('spelling', word.spelling.trim())
           .maybeSingle()
 
@@ -427,22 +499,51 @@ export const useWordStore = defineStore('words', () => {
           continue
         }
 
-        // 验证单词拼写
+        // 验证单词拼写并获取例句
+        let exampleSentence = ''
+        let phonetic = ''
         const wordValidation = await fetchWordData(word.spelling.trim())
         
-        if (!wordValidation.definition && !wordValidation.phonetic) {
+        if (wordValidation.definition || wordValidation.phonetic) {
+          phonetic = wordValidation.phonetic || ''
+          // 获取例句（注意：API返回的是example而非examples）
+          if (wordValidation.example) {
+            exampleSentence = wordValidation.example
+          }
+        } else {
+          // API验证失败，记录为无效但不阻止添加
           results.invalid.push(word.spelling)
-          // 可以选择跳过无效单词，或者仍然添加
-          continue
         }
 
-        // 添加单词
+        // 如果没有从API获取到例句，尝试使用DeepSeek生成
+        if (!exampleSentence) {
+          const apiKey = localStorage.getItem('smartmemo_deepseek_key')
+          if (apiKey) {
+            try {
+              const generatedExample = await generateExampleWithDeepSeek(
+                word.spelling.trim(),
+                word.meaning,
+                apiKey,
+                word.partOfSpeech || null
+              )
+              if (generatedExample) {
+                exampleSentence = generatedExample
+              }
+            } catch (e) {
+              console.warn('DeepSeek例句生成失败:', e)
+            }
+          }
+        }
+
+        // 添加单词（包括音标和例句）
         const { error } = await supabase
           .from('words')
           .insert({
             spelling: word.spelling.trim(),
             part_of_speech: word.partOfSpeech || '',
             meaning: word.meaning,
+            phonetic: phonetic,
+            example_sentence: exampleSentence,
             category: 'custom',
             created_by: authStore.user.id
           })

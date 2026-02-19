@@ -33,7 +33,7 @@ CREATE POLICY "Allow admin update users" ON users
         )
     );
 
--- 允许用户更新自己的信息
+-- 允许用户更新自己的信息（包括 deepseek_api_key）
 CREATE POLICY "Allow users update own profile" ON users
     FOR UPDATE
     USING (auth.uid() = id);
@@ -257,3 +257,18 @@ SELECT tablename, policyname, permissive, roles, cmd, qual
 FROM pg_policies 
 WHERE schemaname = 'public'
 ORDER BY tablename, policyname;
+
+-- ============================================
+-- 清理旧的学生导入数据（2025-02-17）
+-- ============================================
+-- 注意：这些命令会删除旧的导入数据，执行前请确认
+
+-- 方式1：如果有 user_custom_words 表，删除其中的旧数据
+-- DELETE FROM user_custom_words WHERE created_at < '2025-01-01';
+
+-- 方式2：删除没有 created_by 的 custom 分类单词（旧数据）
+-- DELETE FROM words WHERE category = 'custom' AND created_by IS NULL;
+
+-- 方式3：删除所有 custom 分类的单词（谨慎使用，会删除所有个人词库）
+-- DELETE FROM words WHERE category = 'custom';
+

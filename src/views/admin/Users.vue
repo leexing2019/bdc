@@ -477,11 +477,12 @@ const deleteUser = async (user) => {
       .delete()
       .eq('user_id', user.id)
     
-    // 删除自定义单词
+    // 删除自定义单词（从words表中删除该用户创建的custom分类单词）
     await supabaseAdmin
-      .from('user_custom_words')
+      .from('words')
       .delete()
-      .eq('user_id', user.id)
+      .eq('category', 'custom')
+      .eq('created_by', user.id)
     
     // 最后删除用户
     const { error } = await supabaseAdmin
@@ -508,10 +509,12 @@ const viewUserWords = async (user) => {
   userCustomWords.value = []
   
   try {
+    // 从words表中获取该用户创建的custom分类单词
     const { data, error } = await supabase
-      .from('user_custom_words')
+      .from('words')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('category', 'custom')
+      .eq('created_by', user.id)
       .order('created_at', { ascending: false })
     
     if (error) throw error

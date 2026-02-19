@@ -256,12 +256,14 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">词性</label>
-            <input
+            <select
               v-model="wordForm.part_of_speech"
-              type="text"
-              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="如：n., v., adj."
-            />
+              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
+            >
+              <option v-for="item in partOfSpeechOptions" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </option>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">中文释义</label>
@@ -675,6 +677,22 @@ const wordForm = ref({
   category: 'CET-4',
   example_sentence: ''
 })
+
+// 词性选项
+const partOfSpeechOptions = [
+  { value: '', label: '请选择' },
+  { value: 'n.', label: '名词 (n.)' },
+  { value: 'v.', label: '动词 (v.)' },
+  { value: 'vt.', label: '及物动词 (vt.)' },
+  { value: 'vi.', label: '不及物动词 (vi.)' },
+  { value: 'adj.', label: '形容词 (adj.)' },
+  { value: 'adv.', label: '副词 (adv.)' },
+  { value: 'pron.', label: '代词 (pron.)' },
+  { value: 'num.', label: '数词 (num.)' },
+  { value: 'conj.', label: '连词 (conj.)' },
+  { value: 'prep.', label: '介词 (prep.)' },
+  { value: 'int.', label: '感叹词 (int.)' }
+]
 
 // 拼写验证相关
 const validatingWords = ref(false)

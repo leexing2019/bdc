@@ -145,12 +145,20 @@
     <!-- Study Content -->
     <div v-else class="max-w-2xl mx-auto">
       <!-- Mode Badge -->
-      <div class="flex justify-center mb-4">
+      <div class="flex justify-center mb-4 space-x-2">
         <span
           class="px-4 py-1 rounded-full text-sm font-medium"
           :class="currentWord?.isNew ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
         >
           {{ currentWord?.isNew ? '新词' : '复习' }}
+        </span>
+        <!-- 来源标签 -->
+        <span
+          v-if="currentWord?.source"
+          class="px-3 py-1 rounded-full text-xs font-medium"
+          :class="currentWord.source === 'institution' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+        >
+          {{ currentWord.source === 'institution' ? '机构添加' : '自主添加' }}
         </span>
       </div>
 
@@ -167,7 +175,8 @@
           </button>
           
           <h2 class="text-4xl font-bold text-gray-800 mb-2">{{ currentWord?.spelling }}</h2>
-          <p v-if="currentWord?.phonetic" class="text-gray-400 mb-6">{{ currentWord?.phonetic }}</p>
+          <p v-if="currentWord?.phonetic" class="text-gray-400 mb-2">{{ currentWord?.phonetic }}</p>
+          <p v-if="currentWord?.part_of_speech" class="text-gray-500 mb-6">{{ currentWord?.part_of_speech }}</p>
           
           <button
             @click="showAnswer = true"
@@ -412,6 +421,8 @@ const dictationResult = ref(null)
 const posOptions = [
   { value: 'n.', label: '名词 (n.)' },
   { value: 'v.', label: '动词 (v.)' },
+  { value: 'vt.', label: '及物动词 (vt.)' },
+  { value: 'vi.', label: '不及物动词 (vi.)' },
   { value: 'adj.', label: '形容词 (adj.)' },
   { value: 'adv.', label: '副词 (adv.)' },
   { value: 'prep.', label: '介词 (prep.)' },
