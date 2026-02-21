@@ -357,15 +357,19 @@
           
           <!-- Result Feedback -->
           <div v-if="clozeResult !== null" class="mb-4 animate-fade-in">
-            <div v-if="clozeResult" class="flex items-center justify-center text-green-600">
+            <div v-if="clozeResult === true" class="flex items-center justify-center text-green-600">
               <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               <span class="font-medium">正确！</span>
             </div>
+            <div v-else-if="clozeResult === 'hint'" class="text-yellow-600">
+              <p class="font-medium">提示：根据例句时态，应填写变形形式</p>
+              <p class="text-2xl font-bold mt-2">{{ clozeTargetForm }}</p>
+            </div>
             <div v-else class="text-red-600">
               <p class="font-medium">错误，正确答案是：</p>
-              <p class="text-2xl font-bold mt-2">{{ currentWord?.spelling }}</p>
+              <p class="text-2xl font-bold mt-2">{{ clozeTargetForm || currentWord?.spelling }}</p>
             </div>
           </div>
           
@@ -458,10 +462,11 @@ const posResult = ref(null)
 const clozeAnswer = ref('')
 const clozeResult = ref(null)
 const clozeExample = ref('')
+const clozeTargetForm = ref('') // 例句中使用的正确变形形式
 
 // Fetch example sentence from Dictionary API
 const fetchClozeExample = async (word) => {
-  if (!word) return ''
+  if (!word) return { example: '', targetForm: '' }
   
   // Check cache first
   if (exampleCache.has(word)) {
@@ -470,10 +475,10 @@ const fetchClozeExample = async (word) => {
   
   try {
     const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
-    if (!response.ok) return ''
+    if (!response.ok) return { example: '', targetForm: '' }
     
     const data = await response.json()
-    if (!data || !data[0]) return ''
+    if (!data || !data[0]) return { example: '', targetForm: '' }
     
     // Find example in the API response
     const meanings = data[0].meanings || []
@@ -481,15 +486,21 @@ const fetchClozeExample = async (word) => {
       const definitions = meaning.definitions || []
       for (const def of definitions) {
         if (def.example) {
-          exampleCache.set(word, def.example)
-          return def.example
+          // 提取例句中的正确变形形式
+          const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
+          const match = def.example.match(regex)
+          const targetForm = match ? match[0] : ''
+          
+          const result = { example: def.example, targetForm }
+          exampleCache.set(word, result)
+          return result
         }
       }
     }
   } catch (e) {
     // Ignore errors
   }
-  return ''
+  return { example: '', targetForm: '' }
 }
 
 // Load cloze example when word changes
@@ -497,16 +508,24 @@ const loadClozeExample = async () => {
   const word = currentWord.value?.spelling
   if (!word) return
   
+  // Reset target form
+  clozeTargetForm.value = ''
+  
   // First try database example
   if (currentWord.value?.example_sentence) {
     clozeExample.value = currentWord.value.example_sentence
+    // 尝试从数据库例句中提取变形
+    const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
+    const match = currentWord.value.example_sentence.match(regex)
+    clozeTargetForm.value = match ? match[0] : ''
     return
   }
   
   // Then try Dictionary API
-  const example = await fetchClozeExample(word)
-  if (example) {
-    clozeExample.value = example
+  const result = await fetchClozeExample(word)
+  if (result.example) {
+    clozeExample.value = result.example
+    clozeTargetForm.value = result.targetForm
     return
   }
   
@@ -555,14 +574,24 @@ const clozeSentence = computed(() => {
   
   // If we have a fetched example, use it
   if (clozeExample.value) {
-    const regex = new RegExp(word, 'gi')
-    return clozeExample.value.replace(regex, '______')
+    // 尝试用单词边界匹配，处理变形形式
+    const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
+    const match = clozeExample.value.match(regex)
+    if (match) {
+      return clozeExample.value.replace(regex, '______')
+    }
+    // 如果没找到匹配，返回原句加提示
+    return clozeExample.value
   }
   
   // If word has example sentence in database, use it
   if (currentWord.value?.example_sentence) {
-    const regex = new RegExp(word, 'gi')
-    return currentWord.value.example_sentence.replace(regex, '______')
+    const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
+    const match = currentWord.value.example_sentence.match(regex)
+    if (match) {
+      return currentWord.value.example_sentence.replace(regex, '______')
+    }
+    return currentWord.value.example_sentence
   }
   
   // Otherwise, use a better fallback based on meaning
@@ -713,8 +742,27 @@ const checkPOS = (selectedPOS) => {
 const checkCloze = () => {
   if (!clozeAnswer.value.trim()) return
   
-  const correct = clozeAnswer.value.trim().toLowerCase() === currentWord.value.spelling.toLowerCase()
-  clozeResult.value = correct
+  const userAnswer = clozeAnswer.value.trim().toLowerCase()
+  const baseForm = currentWord.value.spelling.toLowerCase()
+  const targetForm = clozeTargetForm.value.toLowerCase()
+  
+  // 如果有目标变形形式
+  if (targetForm && targetForm !== baseForm) {
+    if (userAnswer === targetForm) {
+      // 用户填写了变形形式，正确
+      clozeResult.value = true
+    } else if (userAnswer === baseForm) {
+      // 用户填写了原形，提示应该填写变形形式
+      clozeResult.value = 'hint' // 特殊状态：需要提示
+    } else {
+      // 用户填写了其他形式，错误
+      clozeResult.value = false
+    }
+  } else {
+    // 没有目标变形，使用原来的逻辑
+    const correct = userAnswer === baseForm
+    clozeResult.value = correct
+  }
   
   // 不自动跳转，等待用户点击"下一个"按钮
 }
@@ -742,7 +790,9 @@ const getPOSButtonClass = (pos) => {
 const nextWord = async () => {
   // 根据答题结果提交复习记录
   let quality = 3 // 默认模糊
-  if (dictationResult.value === true || posResult.value === true || clozeResult.value === true) {
+  // clozeResult 可能是 true, false, 或 'hint'（hint也算正确）
+  const clozeCorrect = clozeResult.value === true || clozeResult.value === 'hint'
+  if (dictationResult.value === true || posResult.value === true || clozeCorrect) {
     quality = 5 // 正确
   } else if (dictationResult.value === false || posResult.value === false || clozeResult.value === false) {
     quality = 1 // 错误
@@ -764,6 +814,7 @@ const resetState = () => {
   posResult.value = null
   clozeAnswer.value = ''
   clozeResult.value = null
+  clozeTargetForm.value = ''
 }
 
 const checkCompleted = async () => {
