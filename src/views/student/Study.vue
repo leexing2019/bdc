@@ -71,8 +71,15 @@
             <button
               @click="playPronunciation(previewWord?.spelling)"
               class="w-16 h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-6 transition"
+              :disabled="isPlayingAudio"
             >
-              <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <!-- Loading spinner -->
+              <svg v-if="isPlayingAudio" class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <!-- Speaker icon -->
+              <svg v-else class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               </svg>
             </button>
@@ -176,8 +183,15 @@
           <button
             @click="playPronunciation"
             class="w-16 h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-6 transition"
+            :disabled="isPlayingAudio"
           >
-            <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Loading spinner -->
+            <svg v-if="isPlayingAudio" class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <!-- Speaker icon -->
+            <svg v-else class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             </svg>
           </button>
@@ -421,6 +435,9 @@ const studyMode = ref('recall')
 const currentIndex = ref(0)
 const showAnswer = ref(false)
 
+// Audio playing state
+const isPlayingAudio = ref(false)
+
 // 所有模式列表
 const modes = ['recall', 'dictation', 'pos', 'cloze']
 const modeLabels = {
@@ -638,14 +655,29 @@ const playPronunciation = async (word) => {
   const wordToSpeak = (word && typeof word === 'string') ? word : currentWord.value?.spelling
   if (!wordToSpeak) return
   
+  // 开始播放，设置加载状态
+  isPlayingAudio.value = true
+  
   try {
     // 优先使用数据库中存储的音频URL
     const audioUrl = currentWord.value?.audio_url
     
     if (audioUrl) {
       const audio = new Audio(audioUrl)
+      audio.oncanplaythrough = () => {
+        isPlayingAudio.value = false
+      }
+      audio.onended = () => {
+        isPlayingAudio.value = false
+      }
+      audio.onerror = () => {
+        isPlayingAudio.value = false
+        // 如果播放失败，回退到API获取
+        fetchAndPlayAudio(wordToSpeak)
+      }
       audio.play().catch(e => {
         console.error('Audio play failed:', e)
+        isPlayingAudio.value = false
         // 如果播放失败，回退到API获取
         fetchAndPlayAudio(wordToSpeak)
       })
@@ -656,6 +688,7 @@ const playPronunciation = async (word) => {
     await fetchAndPlayAudio(wordToSpeak)
   } catch (error) {
     console.error('TTS error:', error)
+    isPlayingAudio.value = false
     // Fallback to browser TTS
     speakWithBrowser(wordToSpeak)
   }
@@ -665,8 +698,12 @@ const playPronunciation = async (word) => {
 const fetchAndPlayAudio = async (wordToSpeak) => {
   // 确保是字符串
   if (!wordToSpeak || typeof wordToSpeak !== 'string') {
+    isPlayingAudio.value = false
     return
   }
+  
+  // 设置加载状态
+  isPlayingAudio.value = true
   
   try {
     // Fetch from Free Dictionary API which provides real audio
@@ -690,8 +727,19 @@ const fetchAndPlayAudio = async (wordToSpeak) => {
     
     if (audioUrl) {
       const audio = new Audio(audioUrl)
+      audio.oncanplaythrough = () => {
+        isPlayingAudio.value = false
+      }
+      audio.onended = () => {
+        isPlayingAudio.value = false
+      }
+      audio.onerror = () => {
+        isPlayingAudio.value = false
+        speakWithBrowser(wordToSpeak)
+      }
       audio.play().catch(e => {
         console.error('Audio play failed:', e)
+        isPlayingAudio.value = false
         speakWithBrowser(wordToSpeak)
       })
     } else {
@@ -700,6 +748,7 @@ const fetchAndPlayAudio = async (wordToSpeak) => {
     }
   } catch (error) {
     console.error('Fetch audio error:', error)
+    isPlayingAudio.value = false
     speakWithBrowser(wordToSpeak)
   }
 }
@@ -710,7 +759,18 @@ const speakWithBrowser = (word) => {
     const utterance = new SpeechSynthesisUtterance(word)
     utterance.lang = 'en-US'
     utterance.rate = 0.8
+    utterance.onstart = () => {
+      isPlayingAudio.value = false
+    }
+    utterance.onend = () => {
+      isPlayingAudio.value = false
+    }
+    utterance.onerror = () => {
+      isPlayingAudio.value = false
+    }
     speechSynthesis.speak(utterance)
+  } else {
+    isPlayingAudio.value = false
   }
 }
 
