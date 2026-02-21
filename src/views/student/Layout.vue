@@ -114,7 +114,7 @@
       <!-- Main Content -->
       <main class="flex-1 lg:ml-64 min-h-screen">
         <div class="p-4 lg:p-8">
-          <router-view />
+          <router-view :key="$route.fullPath" />
         </div>
       </main>
 

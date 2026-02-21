@@ -40,13 +40,32 @@
 
     <!-- Session Completed State -->
     <div v-else-if="isSessionCompleted" class="flex flex-col items-center justify-center py-16">
-      <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
+        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </div>
       <h2 class="text-xl font-semibold text-gray-800 mb-2">本轮完成！</h2>
-      <p class="text-gray-500 mb-6">本轮单词已背诵完成，继续还是返回？</p>
+      
+      <!-- 学习统计 -->
+      <div class="bg-gray-50 rounded-xl p-6 mb-6 w-full max-w-md">
+        <p class="text-center text-gray-500 mb-4">今日学习表现</p>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p class="text-2xl font-bold text-gray-800">{{ sessionStats.total }}</p>
+            <p class="text-sm text-gray-500">总题数</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-green-600">{{ sessionStats.correct }}</p>
+            <p class="text-sm text-gray-500">掌握</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-red-500">{{ sessionStats.wrong }}</p>
+            <p class="text-sm text-gray-500">还需努力</p>
+          </div>
+        </div>
+      </div>
+      
       <div class="flex gap-4">
         <button
           @click="continueStudy"
@@ -249,19 +268,22 @@
           <div class="grid grid-cols-3 gap-4">
             <button
               @click="handleResponse(1)"
-              class="flex flex-col items-center p-4 bg-red-50 hover:bg-red-100 rounded-xl transition"
+              :disabled="isTransitioning"
+              class="flex flex-col items-center p-4 bg-red-50 hover:bg-red-100 rounded-xl transition disabled:opacity-50"
             >
               <span class="text-red-700 font-medium">不认识</span>
             </button>
             <button
               @click="handleResponse(3)"
-              class="flex flex-col items-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition"
+              :disabled="isTransitioning"
+              class="flex flex-col items-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition disabled:opacity-50"
             >
               <span class="text-yellow-700 font-medium">模糊</span>
             </button>
             <button
               @click="handleResponse(5)"
-              class="flex flex-col items-center p-4 bg-green-50 hover:bg-green-100 rounded-xl transition"
+              :disabled="isTransitioning"
+              class="flex flex-col items-center p-4 bg-green-50 hover:bg-green-100 rounded-xl transition disabled:opacity-50"
             >
               <span class="text-green-700 font-medium">认识</span>
             </button>
@@ -306,9 +328,18 @@
           <button
             v-if="dictationResult === null"
             @click="checkDictation"
-            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            :disabled="isTransitioning"
+            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             提交
+          </button>
+          <button
+            v-if="dictationResult === null"
+            @click="skipDictation"
+            :disabled="isTransitioning"
+            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3 disabled:opacity-50"
+          >
+            不确定
           </button>
           <button
             v-if="dictationResult === null"
@@ -320,9 +351,17 @@
           <button
             v-else
             @click="nextWord"
-            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            :disabled="isTransitioning"
+            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
-            下一个
+            <span v-if="isTransitioning" class="flex items-center justify-center">
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              加载中...
+            </span>
+            <span v-else>{{ isLastWord ? '结束答题' : '下一个' }}</span>
           </button>
         </div>
       </div>
@@ -363,9 +402,17 @@
             
             <button
               @click="nextWord"
-              class="mt-4 px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              :disabled="isTransitioning"
+              class="mt-4 px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
             >
-              下一个
+              <span v-if="isTransitioning" class="flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                加载中...
+              </span>
+              <span v-else>{{ isLastWord ? '结束答题' : '下一个' }}</span>
             </button>
           </div>
         </div>
@@ -415,23 +462,33 @@
           <button
             v-if="clozeResult === null"
             @click="checkCloze"
-            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            :disabled="isTransitioning"
+            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             提交
           </button>
           <button
             v-if="clozeResult === null"
             @click="skipCloze"
-            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3"
+            :disabled="isTransitioning"
+            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3 disabled:opacity-50"
           >
             不确定
           </button>
           <button
             v-else
             @click="nextWord"
-            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            :disabled="isTransitioning"
+            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
-            下一个
+            <span v-if="isTransitioning" class="flex items-center justify-center">
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              加载中...
+            </span>
+            <span v-else>{{ isLastWord ? '结束答题' : '下一个' }}</span>
           </button>
         </div>
       </div>
@@ -463,6 +520,17 @@ const showAnswer = ref(false)
 
 // Audio playing state
 const isPlayingAudio = ref(false)
+
+// 切换单词时的加载状态
+const isTransitioning = ref(false)
+
+// 本次学习的统计
+const sessionStats = ref({
+  total: 0,
+  correct: 0,
+  wrong: 0,
+  hint: 0
+})
 
 // 所有模式列表
 const modes = ['recall', 'dictation', 'pos', 'cloze']
@@ -592,6 +660,11 @@ const loadClozeExample = async () => {
 }
 
 const currentWord = computed(() => wordStore.todayWords[currentIndex.value])
+
+// 是否是最后一题
+const isLastWord = computed(() => {
+  return currentIndex.value === wordStore.todayWords.length - 1
+})
 
 const progressPercent = computed(() => {
   if (wordStore.todayWords.length === 0) return 100
@@ -817,12 +890,33 @@ const speakWithBrowser = (word) => {
 }
 
 const handleResponse = async (quality) => {
+  // 设置加载状态
+  isTransitioning.value = true
+  
+  // 记录统计
+  sessionStats.value.total++
+  if (quality >= 3) {
+    sessionStats.value.correct++
+  } else {
+    sessionStats.value.wrong++
+  }
+  
   await wordStore.submitReview(quality)
   resetState()
   currentIndex.value++
-  checkCompleted()
+  
+  // 检查是否完成，如果完成则不继续选择模式
+  if (currentIndex.value >= wordStore.todayWords.length) {
+    isSessionCompleted.value = true
+    isTransitioning.value = false
+    return
+  }
+  
   // 切换到下一个单词时随机选择模式
   randomMode()
+  
+  // 加载完成
+  isTransitioning.value = false
 }
 
 const checkDictation = () => {
@@ -890,14 +984,27 @@ const getPOSButtonClass = (pos) => {
 }
 
 const nextWord = async () => {
+  // 设置加载状态
+  isTransitioning.value = true
+  
   // 根据答题结果提交复习记录
   let quality = 3 // 默认模糊
   // clozeResult 可能是 true, false, 或 'hint'（hint也算正确）
   const clozeCorrect = clozeResult.value === true || clozeResult.value === 'hint'
+  
+  // 记录统计
+  sessionStats.value.total++
   if (dictationResult.value === true || posResult.value === true || clozeCorrect) {
     quality = 5 // 正确
+    sessionStats.value.correct++
   } else if (dictationResult.value === false || posResult.value === false || clozeResult.value === false) {
     quality = 1 // 错误
+    sessionStats.value.wrong++
+  } else {
+    // clozeResult 为 'hint' 时
+    if (clozeResult.value === 'hint') {
+      sessionStats.value.hint++
+    }
   }
   
   await wordStore.submitReview(quality)
@@ -908,11 +1015,15 @@ const nextWord = async () => {
   // 检查是否完成，如果完成则不继续选择模式
   if (currentIndex.value >= wordStore.todayWords.length) {
     isSessionCompleted.value = true
+    isTransitioning.value = false
     return
   }
   
   // 切换到下一个单词时随机选择模式
   randomMode()
+  
+  // 加载完成
+  isTransitioning.value = false
 }
 
 const resetState = () => {
@@ -937,6 +1048,8 @@ const continueStudy = async () => {
   await wordStore.fetchTodayWords()
   currentIndex.value = 0
   isSessionCompleted.value = false
+  // 重置统计
+  sessionStats.value = { total: 0, correct: 0, wrong: 0, hint: 0 }
   randomMode()
 }
 

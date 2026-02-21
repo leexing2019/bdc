@@ -26,7 +26,13 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-500">今日任务</p>
-            <p class="text-2xl font-bold text-gray-800">{{ todayStats.total }}</p>
+            <p v-if="wordStore.loading" class="text-2xl font-bold text-gray-400">
+              <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </p>
+            <p v-else class="text-2xl font-bold text-gray-800">{{ todayStats.total }}</p>
           </div>
           <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,7 +46,13 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-500">待复习</p>
-            <p class="text-2xl font-bold text-orange-600">{{ todayStats.review }}</p>
+            <p v-if="wordStore.loading" class="text-2xl font-bold text-gray-400">
+              <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </p>
+            <p v-else class="text-2xl font-bold text-orange-600">{{ todayStats.review }}</p>
           </div>
           <div class="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +66,13 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-500">新词</p>
-            <p class="text-2xl font-bold text-green-600">{{ todayStats.new }}</p>
+            <p v-if="wordStore.loading" class="text-2xl font-bold text-gray-400">
+              <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </p>
+            <p v-else class="text-2xl font-bold text-green-600">{{ todayStats.new }}</p>
           </div>
           <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +86,13 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-500">已掌握</p>
-            <p class="text-2xl font-bold text-purple-600">{{ wordStore.proficiencyStats.mastered }}</p>
+            <p v-if="wordStore.loading" class="text-2xl font-bold text-gray-400">
+              <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </p>
+            <p v-else class="text-2xl font-bold text-purple-600">{{ wordStore.proficiencyStats.mastered }}</p>
           </div>
           <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +194,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
 import { supabase } from '@/lib/supabase'
@@ -272,16 +296,7 @@ const createChart = () => {
 }
 
 onMounted(async () => {
-  // Parallel fetch for faster loading
-  await Promise.all([
-    fetchUserLearningPlan(),
-    wordStore.fetchTodayWords()
-  ])
-  setTimeout(createChart, 100)
-})
-
-// 当从其他页面返回时刷新数据
-onActivated(async () => {
+  // 每次加载都获取最新数据
   await Promise.all([
     fetchUserLearningPlan(),
     wordStore.fetchTodayWords()
