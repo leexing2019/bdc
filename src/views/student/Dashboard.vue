@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
 import { supabase } from '@/lib/supabase'
@@ -273,6 +273,15 @@ const createChart = () => {
 
 onMounted(async () => {
   // Parallel fetch for faster loading
+  await Promise.all([
+    fetchUserLearningPlan(),
+    wordStore.fetchTodayWords()
+  ])
+  setTimeout(createChart, 100)
+})
+
+// 当从其他页面返回时刷新数据
+onActivated(async () => {
   await Promise.all([
     fetchUserLearningPlan(),
     wordStore.fetchTodayWords()
