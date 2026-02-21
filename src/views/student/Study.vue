@@ -904,7 +904,13 @@ const nextWord = async () => {
   
   resetState()
   currentIndex.value++
-  checkCompleted()
+  
+  // 检查是否完成，如果完成则不继续选择模式
+  if (currentIndex.value >= wordStore.todayWords.length) {
+    isSessionCompleted.value = true
+    return
+  }
+  
   // 切换到下一个单词时随机选择模式
   randomMode()
 }
