@@ -452,6 +452,21 @@ const modeLabel = computed(() => modeLabels[studyMode.value])
 
 // 随机选择模式
 const randomMode = () => {
+  // 获取当前单词
+  const word = currentWord.value?.spelling
+  
+  // 检查是否是短语（包含空格）
+  const isPhrase = word && word.includes(' ')
+  
+  // 如果是短语，只能从3个模式中选择（排除 pos 词性选择）
+  if (isPhrase) {
+    const availableModes = ['recall', 'dictation', 'cloze']
+    const randomIndex = Math.floor(Math.random() * availableModes.length)
+    studyMode.value = availableModes[randomIndex]
+    return
+  }
+  
+  // 如果不是短语，正常4选1
   const randomIndex = Math.floor(Math.random() * modes.length)
   studyMode.value = modes[randomIndex]
 }
