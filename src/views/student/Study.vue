@@ -274,7 +274,7 @@
           <button
             v-if="dictationResult === null"
             @click="skipDictation"
-            class="px-8 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3"
           >
             不确定
           </button>
