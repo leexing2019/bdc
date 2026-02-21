@@ -38,6 +38,31 @@
       </router-link>
     </div>
 
+    <!-- Session Completed State -->
+    <div v-else-if="isSessionCompleted" class="flex flex-col items-center justify-center py-16">
+      <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2">本轮完成！</h2>
+      <p class="text-gray-500 mb-6">本轮单词已背诵完成，继续还是返回？</p>
+      <div class="flex gap-4">
+        <button
+          @click="continueStudy"
+          class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+        >
+          继续下一轮
+        </button>
+        <router-link
+          to="/student/dashboard"
+          class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+        >
+          返回主页
+        </router-link>
+      </div>
+    </div>
+
     <!-- Preview/Preheat Mode (Flashcard) -->
     <div v-else-if="isPreviewMode" class="max-w-2xl mx-auto">
       <!-- Preview Header -->
@@ -427,6 +452,7 @@ const wordStore = useWordStore()
 
 // Preview mode states
 const isPreviewMode = ref(true)
+const isSessionCompleted = ref(false) // 学习完成状态
 const previewIndex = ref(0)
 const previewShowAnswer = ref(false)
 
@@ -583,6 +609,7 @@ const isPreviewComplete = computed(() => previewIndex.value >= wordStore.todayWo
 
 const startStudy = () => {
   isPreviewMode.value = false
+  isSessionCompleted.value = false
   currentIndex.value = 0
   randomMode()
 }
@@ -894,9 +921,17 @@ const resetState = () => {
 
 const checkCompleted = async () => {
   if (currentIndex.value >= wordStore.todayWords.length) {
-    await wordStore.fetchTodayWords()
-    currentIndex.value = 0
+    // 显示完成界面，而不是自动重置
+    isSessionCompleted.value = true
   }
+}
+
+// 继续学习新的一轮
+const continueStudy = async () => {
+  await wordStore.fetchTodayWords()
+  currentIndex.value = 0
+  isSessionCompleted.value = false
+  randomMode()
 }
 
 // Watch for word changes and load cloze example when in cloze mode
