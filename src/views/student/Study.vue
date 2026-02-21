@@ -605,7 +605,8 @@ const clozeSentence = computed(() => {
 })
 
 const playPronunciation = async (word) => {
-  const wordToSpeak = word || currentWord.value?.spelling
+  // 如果传入的是事件对象（点击事件），则忽略它，使用当前单词
+  const wordToSpeak = (word && typeof word === 'string') ? word : currentWord.value?.spelling
   if (!wordToSpeak) return
   
   try {
