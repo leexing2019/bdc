@@ -60,7 +60,7 @@
       </div>
 
       <!-- Preview Card -->
-      <div class="bg-white rounded-2xl shadow-lg p-8">
+      <div v-if="!isPreviewComplete && previewWord" class="bg-white rounded-2xl shadow-lg p-8">
         <div class="text-center">
           <div class="text-sm text-gray-400 mb-4">
             {{ previewIndex + 1 }} / {{ wordStore.todayWords.length }}
@@ -97,12 +97,20 @@
               {{ previewWord?.example_sentence }}
             </p>
 
-            <button
-              @click="nextPreviewWord"
-              class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-            >
-              下一个
-            </button>
+            <div class="flex justify-center space-x-4">
+              <button
+                @click="previewShowAnswer = false"
+                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                返回
+              </button>
+              <button
+                @click="nextPreviewWord"
+                class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              >
+                下一个
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -264,6 +272,13 @@
             提交
           </button>
           <button
+            v-if="dictationResult === null"
+            @click="skipDictation"
+            class="px-8 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+          >
+            不确定
+          </button>
+          <button
             v-else
             @click="nextWord"
             class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
@@ -360,6 +375,13 @@
             class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
             提交
+          </button>
+          <button
+            v-if="clozeResult === null"
+            @click="skipCloze"
+            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3"
+          >
+            不确定
           </button>
           <button
             v-else
@@ -503,7 +525,8 @@ const progressPercent = computed(() => {
 const previewWord = computed(() => wordStore.todayWords[previewIndex.value])
 const previewProgress = computed(() => {
   if (wordStore.todayWords.length === 0) return 100
-  return ((previewIndex.value) / wordStore.todayWords.length) * 100
+  // 使用 previewIndex + 1 因为显示是从1开始的
+  return ((previewIndex.value + 1) / wordStore.todayWords.length) * 100
 })
 const isPreviewComplete = computed(() => previewIndex.value >= wordStore.todayWords.length)
 
@@ -586,6 +609,36 @@ const playPronunciation = async (word) => {
   if (!wordToSpeak) return
   
   try {
+    // 优先使用数据库中存储的音频URL
+    const audioUrl = currentWord.value?.audio_url
+    
+    if (audioUrl) {
+      const audio = new Audio(audioUrl)
+      audio.play().catch(e => {
+        console.error('Audio play failed:', e)
+        // 如果播放失败，回退到API获取
+        fetchAndPlayAudio(wordToSpeak)
+      })
+      return
+    }
+    
+    // 如果数据库中没有音频，调用API获取
+    await fetchAndPlayAudio(wordToSpeak)
+  } catch (error) {
+    console.error('TTS error:', error)
+    // Fallback to browser TTS
+    speakWithBrowser(wordToSpeak)
+  }
+}
+
+// 从API获取并播放音频
+const fetchAndPlayAudio = async (wordToSpeak) => {
+  // 确保是字符串
+  if (!wordToSpeak || typeof wordToSpeak !== 'string') {
+    return
+  }
+  
+  try {
     // Fetch from Free Dictionary API which provides real audio
     const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(wordToSpeak.trim())}`)
     
@@ -609,14 +662,14 @@ const playPronunciation = async (word) => {
       const audio = new Audio(audioUrl)
       audio.play().catch(e => {
         console.error('Audio play failed:', e)
+        speakWithBrowser(wordToSpeak)
       })
     } else {
-      // Fallback to browser TTS
+      // No audio available, use browser TTS
       speakWithBrowser(wordToSpeak)
     }
   } catch (error) {
-    console.error('TTS error:', error)
-    // Fallback to browser TTS
+    console.error('Fetch audio error:', error)
     speakWithBrowser(wordToSpeak)
   }
 }
@@ -663,6 +716,16 @@ const checkCloze = () => {
   clozeResult.value = correct
   
   // 不自动跳转，等待用户点击"下一个"按钮
+}
+
+// 跳过填空题，记为不认识
+const skipCloze = () => {
+  clozeResult.value = false  // 记为错误
+}
+
+// 跳过默写题，记为不认识
+const skipDictation = () => {
+  dictationResult.value = false  // 记为错误
 }
 
 const getPOSButtonClass = (pos) => {

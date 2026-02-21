@@ -412,6 +412,7 @@ export const useWordStore = defineStore('words', () => {
       // 验证单词拼写并获取例句
       let exampleSentence = ''
       let phonetic = ''
+      let audioUrl = ''
       const wordValidation = await fetchWordData(wordData.spelling.trim())
       
       if (wordValidation.definition || wordValidation.phonetic) {
@@ -419,6 +420,10 @@ export const useWordStore = defineStore('words', () => {
         // 获取例句（注意：API返回的是example而非examples）
         if (wordValidation.example) {
           exampleSentence = wordValidation.example
+        }
+        // 获取音频URL
+        if (wordValidation.audio) {
+          audioUrl = wordValidation.audio
         }
       }
 
@@ -442,7 +447,7 @@ export const useWordStore = defineStore('words', () => {
         }
       }
 
-      // 直接添加到words表（用户自定义单词），包含例句和音标
+      // 直接添加到words表（用户自定义单词），包含例句、音标和音频
       const { error } = await supabase
         .from('words')
         .insert({
@@ -450,6 +455,7 @@ export const useWordStore = defineStore('words', () => {
           part_of_speech: wordData.partOfSpeech || '',
           meaning: wordData.meaning,
           phonetic: phonetic,
+          audio_url: audioUrl,
           example_sentence: exampleSentence,
           category: 'custom',
           created_by: authStore.user.id
@@ -534,6 +540,7 @@ export const useWordStore = defineStore('words', () => {
         // 验证单词拼写并获取例句
         let exampleSentence = ''
         let phonetic = ''
+        let audioUrl = ''
         const wordValidation = await fetchWordData(word.spelling.trim())
         
         if (wordValidation.definition || wordValidation.phonetic) {
@@ -541,6 +548,10 @@ export const useWordStore = defineStore('words', () => {
           // 获取例句（注意：API返回的是example而非examples）
           if (wordValidation.example) {
             exampleSentence = wordValidation.example
+          }
+          // 获取音频URL
+          if (wordValidation.audio) {
+            audioUrl = wordValidation.audio
           }
         } else {
           // API验证失败，记录为无效但不阻止添加
@@ -567,7 +578,7 @@ export const useWordStore = defineStore('words', () => {
           }
         }
 
-        // 添加单词（包括音标和例句）
+        // 添加单词（包括音标、例句和音频）
         const { error } = await supabase
           .from('words')
           .insert({
@@ -575,6 +586,7 @@ export const useWordStore = defineStore('words', () => {
             part_of_speech: word.partOfSpeech || '',
             meaning: word.meaning,
             phonetic: phonetic,
+            audio_url: audioUrl,
             example_sentence: exampleSentence,
             category: 'custom',
             created_by: authStore.user.id

@@ -168,11 +168,11 @@ function normalizePartOfSpeech(pos) {
  * @param {string} word - The word to look up
  * @param {string} deepseekApiKey - Optional DeepSeek API key for example generation
  * @param {string} partOfSpeech - Optional part of speech to match (e.g., 'vi.', 'vt.', 'n.')
- * @returns {Promise<{definition: string|null, example: string|null, phonetic: string|null}>}
+ * @returns {Promise<{definition: string|null, example: string|null, phonetic: string|null, audio: string|null}>}
  */
 export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = null) {
   if (!word || !word.trim()) {
-    return { definition: null, example: null, phonetic: null }
+    return { definition: null, example: null, phonetic: null, audio: null }
   }
 
   // 清理单词：移除空格、下划线等，只保留纯单词
@@ -199,9 +199,9 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       if (deepseekApiKey) {
         // 使用原始输入词生成例句，带上词性信息
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null }
+        return { definition: null, example: example, phonetic: null, audio: null }
       }
-      return { definition: null, example: null, phonetic: null }
+      return { definition: null, example: null, phonetic: null, audio: null }
     }
 
     const data = await response.json()
@@ -210,9 +210,9 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       // No data returned
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null }
+        return { definition: null, example: example, phonetic: null, audio: null }
       }
-      return { definition: null, example: null, phonetic: null }
+      return { definition: null, example: null, phonetic: null, audio: null }
     }
 
     const wordData = data[0]
@@ -226,6 +226,20 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       for (const p of wordData.phonetics) {
         if (p.text) {
           phonetic = p.text
+          break
+        }
+      }
+    }
+
+    // Extract audio URL
+    let audio = null
+    if (wordData.audio) {
+      audio = wordData.audio
+    } else if (wordData.phonetics && wordData.phonetics.length > 0) {
+      // Find first non-empty audio
+      for (const p of wordData.phonetics) {
+        if (p.audio) {
+          audio = p.audio
           break
         }
       }
@@ -253,7 +267,8 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
               return {
                 definition: def.definition,
                 example: example,
-                phonetic: phonetic
+                phonetic: phonetic,
+                audio: audio
               }
             }
           }
@@ -277,7 +292,8 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
           return {
             definition: def.definition,
             example: example,
-            phonetic: phonetic
+            phonetic: phonetic,
+            audio: audio
           }
         }
       }
@@ -286,22 +302,22 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
     // No definition found, try DeepSeek for example
     if (deepseekApiKey) {
       const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-      return { definition: null, example: example, phonetic: phonetic }
+      return { definition: null, example: example, phonetic: phonetic, audio: audio }
     }
 
-    return { definition: null, example: null, phonetic: phonetic }
+    return { definition: null, example: null, phonetic: phonetic, audio: audio }
   } catch (error) {
     console.error('Dictionary API error:', error.message)
     // Try DeepSeek as fallback on error (网络错误、CORS错误等)
     try {
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null }
+        return { definition: null, example: example, phonetic: null, audio: null }
       }
     } catch (deepseekError) {
       console.error('DeepSeek fallback also failed:', deepseekError.message)
     }
-    return { definition: null, example: null, phonetic: null }
+    return { definition: null, example: null, phonetic: null, audio: null }
   }
 }
 

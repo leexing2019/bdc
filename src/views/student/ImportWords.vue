@@ -259,17 +259,45 @@
 
     <!-- Success Message -->
     <div v-if="showSuccess" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl p-8 text-center max-w-sm">
-        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
+      <div class="bg-white rounded-2xl p-6 max-w-md max-h-[80vh] overflow-y-auto">
+        <div class="text-center mb-4">
+          <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">导入完成</h3>
         </div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-2">提交成功！</h3>
-        <p class="text-gray-500 mb-6">单词已添加到你的个人词库中</p>
+        
+        <!-- 成功信息 -->
+        <div v-if="successCount > 0" class="mb-4 p-3 bg-green-50 rounded-lg">
+          <p class="text-green-700">成功添加 {{ successCount }} 个单词</p>
+        </div>
+        
+        <!-- 重复信息 -->
+        <div v-if="duplicateWords.length > 0" class="mb-4">
+          <p class="text-orange-600 font-medium mb-2">以下 {{ duplicateWords.length }} 个单词已存在（重复）：</p>
+          <div class="max-h-40 overflow-y-auto border border-orange-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead class="bg-orange-50 sticky top-0">
+                <tr>
+                  <th class="text-left py-2 px-3 font-medium text-orange-700">英文</th>
+                  <th class="text-left py-2 px-3 font-medium text-orange-700">词性</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-orange-100">
+                <tr v-for="(word, index) in duplicateWords" :key="index" class="hover:bg-orange-50">
+                  <td class="py-2 px-3 text-gray-700">{{ word.spelling }}</td>
+                  <td class="py-2 px-3 text-gray-500">{{ word.partOfSpeech || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
         <button
           @click="showSuccess = false"
-          class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          class="w-full px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
         >
           确定
         </button>
@@ -299,6 +327,10 @@ const processingFile = ref(false)
 const testingApi = ref(false)
 const showImportModal = ref(false)
 const currentExample = ref(null)
+// 存储重复的单词列表
+const duplicateWords = ref([])
+// 成功导入的数量
+const successCount = ref(0)
 
 // 从本地存储获取API Key
 const deepseekApiKey = ref(localStorage.getItem('smartmemo_deepseek_key') || '')
@@ -493,6 +525,7 @@ const closeImportModal = () => {
   showImportModal.value = false
   parsedWords.value = []
   if (importFileInput.value) importFileInput.value.value = ''
+  // 不在这里清除duplicateWords，因为需要显示在成功弹窗中
 }
 
 const triggerImportFileInput = () => {
@@ -634,28 +667,29 @@ const submitWords = async () => {
   }
 
   submitting.value = true
+  duplicateWords.value = []
+  successCount.value = 0
   
   try {
     // 使用批量添加函数，会自动检查重复和验证
     const result = await wordStore.addCustomWordsBatch(parsedWords.value)
     
-    // 显示结果
-    let message = ''
-    if (result.successCount > 0) {
-      message += `成功添加 ${result.successCount} 个单词\n`
-    }
-    if (result.duplicatesCount > 0) {
-      message += `跳过 ${result.duplicatesCount} 个重复单词\n`
-    }
-    if (result.invalidCount > 0) {
-      message += `跳过 ${result.invalidCount} 个拼写错误的单词\n`
-    }
-    if (result.errorCount > 0) {
-      message += `${result.errorCount} 个单词添加失败\n`
-    }
+    // 保存成功数量和重复列表
+    successCount.value = result.successCount
     
-    if (message) {
-      alert(message)
+    // 从结果中提取重复的单词详情
+    if (result.results && result.results.duplicates) {
+      duplicateWords.value = result.results.duplicates.map(d => {
+        // 解析格式: "march（vi.）"
+        const match = d.match(/^(.+?)（(.+?)）$/)
+        if (match) {
+          return {
+            spelling: match[1],
+            partOfSpeech: match[2] === '未标注词性' ? '' : match[2]
+          }
+        }
+        return { spelling: d, partOfSpeech: '' }
+      })
     }
     
     showSuccess.value = true

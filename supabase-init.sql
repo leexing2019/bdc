@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS words (
     meaning TEXT NOT NULL,
     category VARCHAR(50) DEFAULT 'custom',
     phonetic VARCHAR(100),
+    audio_url TEXT,
     example_sentence TEXT,
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

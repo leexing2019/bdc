@@ -366,7 +366,23 @@ const getProficiencyLabel = (word) => {
   return '已掌握'
 }
 
-const playWord = (word) => {
+const playWord = async (word) => {
+  // 优先使用数据库中存储的音频URL
+  if (word.audio_url) {
+    const audio = new Audio(word.audio_url)
+    audio.play().catch(e => {
+      console.error('Audio play failed:', e)
+      // 播放失败则使用浏览器TTS
+      speakWithBrowser(word.spelling)
+    })
+    return
+  }
+  
+  // 没有数据库音频，使用浏览器TTS
+  speakWithBrowser(word.spelling)
+}
+
+const speakWithBrowser = (word) => {
   const utterance = new SpeechSynthesisUtterance(word)
   utterance.lang = 'en-US'
   utterance.rate = 0.8
