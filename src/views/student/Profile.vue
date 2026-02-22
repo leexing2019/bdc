@@ -21,7 +21,46 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- 加载动画 -->
+    <div v-if="loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <div class="flex flex-col items-center">
+          <svg class="animate-spin h-8 w-8 text-primary-600 mb-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-sm text-gray-500">加载中...</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <div class="flex flex-col items-center">
+          <svg class="animate-spin h-8 w-8 text-green-600 mb-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-sm text-gray-500">加载中...</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <div class="flex flex-col items-center">
+          <svg class="animate-spin h-8 w-8 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-sm text-gray-500">加载中...</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <div class="flex flex-col items-center">
+          <svg class="animate-spin h-8 w-8 text-orange-600 mb-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-sm text-gray-500">加载中...</p>
+        </div>
+      </div>
+    </div>
+    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
         <p class="text-3xl font-bold text-primary-600">{{ totalWordsCount }}</p>
         <p class="text-sm text-gray-500">总单词数</p>
@@ -193,6 +232,7 @@ const passwordSuccess = ref('')
 const passwordLoading = ref(false)
 const customDailyLimit = ref(0) // 个人词库每日背诵数量
 const totalWordsCount = ref(0) // 总单词数
+const loading = ref(true) // 加载状态
 
 const updateDailyLimitDecrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 20
@@ -319,6 +359,8 @@ const loadUserSettings = async () => {
     totalWordsCount.value = assignedWordCount + customWordCount
   } catch (error) {
     console.error('Load user settings error:', error)
+  } finally {
+    loading.value = false
   }
 }
 

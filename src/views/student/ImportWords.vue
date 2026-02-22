@@ -259,14 +259,14 @@
           <button
             v-if="parsedWords.length > 0"
             @click="submitWords"
-            :disabled="submitting"
+            :disabled="submitting || waitingForApiKey"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center"
           >
-            <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg v-if="submitting || waitingForApiKey" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词' }}
+            {{ waitingForApiKey ? '等待API Key...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
           </button>
         </div>
       </div>
@@ -581,6 +581,7 @@ const successCount = ref(0)
 const showValidationModal = ref(false)
 const wordValidationResults = ref([])
 const validatingWords = ref(false)
+const waitingForApiKey = ref(false)  // 等待API Key输入时显示加载状态
 const validatingProgress = ref('')  // 验证进度文本
 const editingWordIndex = ref(-1)
 const editingWordText = ref('')
@@ -728,6 +729,7 @@ const showDeepseekPromptModal = (words, currentIndex) => {
   pendingWords.value = words
   currentPromptWordIndex.value = currentIndex
   promptApiKey.value = ''
+  waitingForApiKey.value = true  // 显示按钮加载状态
   showDeepseekPrompt.value = true
 }
 
@@ -755,6 +757,7 @@ const saveApiKeyAndContinue = async () => {
     
     // 关闭弹窗，继续验证
     showDeepseekPrompt.value = false
+    waitingForApiKey.value = false
     
     // 继续处理剩余单词
     await continueValidationWithApi()
@@ -797,6 +800,7 @@ const ignorePrompt = () => {
     localStorage.setItem('smartmemo_no_deepseek_prompt', 'true')
   }
   showDeepseekPrompt.value = false
+  waitingForApiKey.value = false
   // 不使用API Key继续验证
   continueValidationWithoutApi()
 }
@@ -1195,9 +1199,9 @@ const submitWords = async () => {
     }
     
     if (exampleFetchFailed) {
-      // 弹出DeepSeek API提示
+      // 弹出DeepSeek API提示，保持loading状态
       showDeepseekPromptModal(parsedWords.value, 0)
-      validatingWords.value = false
+      // 注意：这里不设置 validatingWords.value = false，让按钮保持加载状态
       return
     }
     
