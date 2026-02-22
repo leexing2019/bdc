@@ -85,6 +85,49 @@
         <h3 class="font-semibold text-gray-800">学习设置</h3>
       </div>
       <div class="divide-y divide-gray-100">
+        <!-- 学习计划（多计划模式） -->
+        <div v-if="learningPlans.length > 0" class="p-4">
+          <div class="mb-3">
+            <p class="font-medium text-gray-800">当前学习计划</p>
+            <p class="text-sm text-gray-500">每日任务总量: {{ totalDailyLimit }} 词/天</p>
+          </div>
+          <div class="space-y-2">
+            <div 
+              v-for="plan in learningPlans" 
+              :key="plan.id"
+              class="flex items-center justify-between p-3 rounded-lg"
+              :class="plan.status === 'paused' ? 'bg-gray-50' : 'bg-primary-50'"
+            >
+              <div class="flex items-center gap-3">
+                <span class="font-medium text-gray-800">{{ getCategoryLabel(plan.category) }}</span>
+                <span 
+                  class="px-2 py-0.5 text-xs rounded-full"
+                  :class="plan.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'"
+                >
+                  {{ plan.status === 'active' ? '进行中' : '已暂停' }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600">{{ plan.daily_limit }}词/天</span>
+                <button
+                  v-if="plan.status === 'active'"
+                  @click="togglePlanStatus(plan)"
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 border rounded hover:bg-gray-100"
+                >
+                  暂停
+                </button>
+                <button
+                  v-else
+                  @click="togglePlanStatus(plan)"
+                  class="px-2 py-1 text-xs text-green-600 hover:text-green-800 border border-green-200 rounded hover:bg-green-50"
+                >
+                  恢复
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 教师分配每日新词数量 -->
         <div class="p-4 flex items-center justify-between">
           <div>
@@ -212,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
@@ -233,6 +276,65 @@ const passwordLoading = ref(false)
 const customDailyLimit = ref(0) // 个人词库每日背诵数量
 const totalWordsCount = ref(0) // 总单词数
 const loading = ref(true) // 加载状态
+
+// 学习计划相关
+const learningPlans = ref([])
+
+// 计算每日任务总量
+const totalDailyLimit = computed(() => {
+  if (learningPlans.value.length > 0) {
+    return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
+  }
+  return (authStore.user?.daily_limit || 20) + customDailyLimit.value
+})
+
+// 分类标签映射
+const getCategoryLabel = (category) => {
+  const labels = {
+    'CET-4': 'CET-4',
+    'CET-6': 'CET-6',
+    'IELTS': 'IELTS',
+    'TOEFL': 'TOEFL',
+    'GRE': 'GRE',
+    'custom': '个人词库',
+    'all': '全部词库'
+  }
+  return labels[category] || category
+}
+
+// 加载学习计划
+const loadLearningPlans = async () => {
+  try {
+    const { data: plans, error } = await supabase
+      .from('user_learning_plans')
+      .select('*')
+      .eq('user_id', authStore.user.id)
+      .order('priority', { ascending: true })
+    
+    if (!error && plans) {
+      learningPlans.value = plans
+    }
+  } catch (error) {
+    console.error('加载学习计划失败:', error)
+  }
+}
+
+// 切换计划状态
+const togglePlanStatus = async (plan) => {
+  const newStatus = plan.status === 'active' ? 'paused' : 'active'
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', plan.id)
+    
+    if (!error) {
+      plan.status = newStatus
+    }
+  } catch (error) {
+    console.error('切换计划状态失败:', error)
+  }
+}
 
 const updateDailyLimitDecrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 20
@@ -428,5 +530,6 @@ const handleLogout = async () => {
 
 onMounted(() => {
   loadUserSettings()
+  loadLearningPlans()
 })
 </script>

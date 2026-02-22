@@ -158,6 +158,15 @@
                   </svg>
                 </button>
                 <button
+                  @click="manageLearningPlans(user)"
+                  class="p-2 text-gray-400 hover:text-green-600 transition"
+                  title="管理学习计划"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </button>
+                <button
                   @click="deleteUser(user)"
                   class="p-2 text-gray-400 hover:text-red-600 transition"
                   title="删除用户"
@@ -278,6 +287,141 @@
         </div>
       </div>
     </div>
+
+    <!-- Learning Plans Modal -->
+    <div v-if="showLearningPlansModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-800">{{ selectedUser?.username }} 的学习计划</h3>
+          <button @click="showLearningPlansModal = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 可用的分类列表 -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">可添加的词库分类</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="cat in availableCategories"
+              :key="cat.value"
+              @click="addPlanCategory(cat.value)"
+              :disabled="userPlans.some(p => p.category === cat.value)"
+              class="px-3 py-1 text-sm rounded-full border transition"
+              :class="userPlans.some(p => p.category === cat.value) 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100'"
+            >
+              + {{ cat.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 当前学习计划列表 -->
+        <div class="flex-1 overflow-y-auto">
+          <div v-if="loadingPlans" class="flex items-center justify-center py-8">
+            <svg class="w-8 h-8 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+
+          <div v-else-if="userPlans.length === 0" class="text-center py-8 text-gray-500">
+            暂无学习计划，请添加上面的分类
+          </div>
+
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(plan, index) in userPlans" 
+              :key="plan.id"
+              class="border rounded-lg p-4"
+              :class="plan.status === 'paused' ? 'bg-gray-50' : 'bg-white'"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="text-lg font-medium text-gray-800">{{ getCategoryLabel(plan.category) }}</span>
+                  <span 
+                    class="px-2 py-0.5 text-xs rounded-full"
+                    :class="plan.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                  >
+                    {{ plan.status === 'active' ? '进行中' : '已暂停' }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <!-- 优先级调整 -->
+                  <button
+                    @click="movePlanPriority(plan, -1)"
+                    :disabled="index === 0"
+                    class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <span class="text-sm text-gray-500">优先级 {{ plan.priority }}</span>
+                  <button
+                    @click="movePlanPriority(plan, 1)"
+                    :disabled="index === userPlans.length - 1"
+                    class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-3 flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-gray-600">每日新词:</label>
+                  <input
+                    v-model.number="plan.daily_limit"
+                    type="number"
+                    min="1"
+                    max="100"
+                    class="w-20 px-2 py-1 border rounded text-center"
+                    @change="updatePlanDailyLimit(plan)"
+                  />
+                </div>
+
+                <button
+                  v-if="plan.status === 'active'"
+                  @click="pausePlan(plan)"
+                  class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border rounded hover:bg-gray-50"
+                >
+                  暂停
+                </button>
+                <button
+                  v-else
+                  @click="resumePlan(plan)"
+                  class="px-3 py-1 text-sm text-green-600 hover:text-green-800 border border-green-200 rounded hover:bg-green-50"
+                >
+                  恢复
+                </button>
+
+                <button
+                  @click="removePlan(plan)"
+                  class="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-200 rounded hover:bg-red-50"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t">
+          <button
+            @click="showLearningPlansModal = false"
+            class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
     </template>
   </div>
 </template>
@@ -300,6 +444,27 @@ const showUserWordsModal = ref(false)
 const selectedUser = ref(null)
 const userCustomWords = ref([])
 const loadingUserWords = ref(false)
+
+// 学习计划相关状态
+const showLearningPlansModal = ref(false)
+const userPlans = ref([])
+const loadingPlans = ref(false)
+
+// 可用的分类选项
+const availableCategories = [
+  { value: 'CET-4', label: 'CET-4' },
+  { value: 'CET-6', label: 'CET-6' },
+  { value: 'IELTS', label: 'IELTS' },
+  { value: 'TOEFL', label: 'TOEFL' },
+  { value: 'GRE', label: 'GRE' },
+  { value: 'custom', label: '个人词库' },
+  { value: 'all', label: '全部词库' }
+]
+
+const getCategoryLabel = (category) => {
+  const cat = availableCategories.find(c => c.value === category)
+  return cat ? cat.label : category
+}
 
 const userForm = ref({
   username: '',
@@ -544,6 +709,145 @@ const viewUserWords = async (user) => {
     console.error('获取用户单词失败:', error)
   } finally {
     loadingUserWords.value = false
+  }
+}
+
+// 管理学习计划
+const manageLearningPlans = async (user) => {
+  selectedUser.value = user
+  showLearningPlansModal.value = true
+  await fetchUserPlans(user.id)
+}
+
+const fetchUserPlans = async (userId) => {
+  loadingPlans.value = true
+  userPlans.value = []
+  try {
+    const { data, error } = await supabase
+      .from('user_learning_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('priority', { ascending: true })
+    
+    if (error) throw error
+    userPlans.value = data || []
+  } catch (error) {
+    console.error('获取学习计划失败:', error)
+  } finally {
+    loadingPlans.value = false
+  }
+}
+
+const addPlanCategory = async (category) => {
+  if (!selectedUser.value) return
+  
+  // 检查是否已存在
+  if (userPlans.value.some(p => p.category === category)) return
+  
+  const newPlan = {
+    user_id: selectedUser.value.id,
+    category: category,
+    daily_limit: 20,
+    priority: userPlans.value.length + 1,
+    status: 'active'
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .insert(newPlan)
+    
+    if (error) throw error
+    await fetchUserPlans(selectedUser.value.id)
+  } catch (error) {
+    console.error('添加学习计划失败:', error)
+    alert('添加学习计划失败')
+  }
+}
+
+const updatePlanDailyLimit = async (plan) => {
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .update({ daily_limit: plan.daily_limit, updated_at: new Date().toISOString() })
+      .eq('id', plan.id)
+    
+    if (error) throw error
+  } catch (error) {
+    console.error('更新每日限制失败:', error)
+    alert('更新失败')
+  }
+}
+
+const pausePlan = async (plan) => {
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .update({ status: 'paused', updated_at: new Date().toISOString() })
+      .eq('id', plan.id)
+    
+    if (error) throw error
+    plan.status = 'paused'
+  } catch (error) {
+    console.error('暂停计划失败:', error)
+  }
+}
+
+const resumePlan = async (plan) => {
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .update({ status: 'active', updated_at: new Date().toISOString() })
+      .eq('id', plan.id)
+    
+    if (error) throw error
+    plan.status = 'active'
+  } catch (error) {
+    console.error('恢复计划失败:', error)
+  }
+}
+
+const removePlan = async (plan) => {
+  if (!confirm(`确定要删除 "${getCategoryLabel(plan.category)}" 学习计划吗？`)) return
+  
+  try {
+    const { error } = await supabase
+      .from('user_learning_plans')
+      .delete()
+      .eq('id', plan.id)
+    
+    if (error) throw error
+    userPlans.value = userPlans.value.filter(p => p.id !== plan.id)
+  } catch (error) {
+    console.error('删除计划失败:', error)
+  }
+}
+
+const movePlanPriority = async (plan, direction) => {
+  const index = userPlans.value.findIndex(p => p.id === plan.id)
+  if (index === -1) return
+  
+  const newIndex = index + direction
+  if (newIndex < 0 || newIndex >= userPlans.value.length) return
+  
+  // 交换优先级
+  const otherPlan = userPlans.value[newIndex]
+  const tempPriority = plan.priority
+  
+  try {
+    await supabase
+      .from('user_learning_plans')
+      .update({ priority: otherPlan.priority, updated_at: new Date().toISOString() })
+      .eq('id', plan.id)
+    
+    await supabase
+      .from('user_learning_plans')
+      .update({ priority: tempPriority, updated_at: new Date().toISOString() })
+      .eq('id', otherPlan.id)
+    
+    await fetchUserPlans(selectedUser.value.id)
+  } catch (error) {
+    console.error('调整优先级失败:', error)
   }
 }
 

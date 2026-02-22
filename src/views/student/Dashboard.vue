@@ -18,6 +18,18 @@
           <p class="text-lg font-semibold text-primary-600">{{ userDailyLimit }} 词/天</p>
         </div>
       </div>
+      <!-- 多计划详情 -->
+      <div v-if="learningPlans.length > 0" class="mt-3 pt-3 border-t">
+        <div class="flex flex-wrap gap-2">
+          <span 
+            v-for="plan in learningPlans" 
+            :key="plan.id"
+            class="px-2 py-1 text-xs rounded-full bg-primary-50 text-primary-700"
+          >
+            {{ getCategoryLabel(plan.category) }}: {{ plan.daily_limit }}词/天
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Today's Stats -->
@@ -219,6 +231,7 @@ const todayCompleted = ref(false)
 // Learning plan data
 const userCategory = ref('')
 const userDailyLimit = ref(20)
+const learningPlans = ref([])
 
 // 检查今日是否已完成学习任务
 const checkTodayCompletion = async () => {
@@ -243,10 +256,34 @@ const checkTodayCompletion = async () => {
   }
 }
 
+// 获取用户学习计划
 const fetchUserLearningPlan = async () => {
   if (!authStore.user) return
   
   try {
+    // 首先尝试获取新的学习计划表
+    const { data: plans, error: plansError } = await supabase
+      .from('user_learning_plans')
+      .select('*')
+      .eq('user_id', authStore.user.id)
+      .eq('status', 'active')
+      .order('priority', { ascending: true })
+    
+    if (!plansError && plans && plans.length > 0) {
+      // 使用新的多学习计划
+      learningPlans.value = plans
+      userDailyLimit.value = plans.reduce((sum, p) => sum + p.daily_limit, 0)
+      
+      // 显示第一个计划的分类作为主要显示
+      if (plans.length === 1) {
+        userCategory.value = plans[0].category
+      } else {
+        userCategory.value = 'multiple'
+      }
+      return
+    }
+    
+    // 回退到旧的user_settings逻辑
     // Get user settings for category - use admin client to bypass RLS
     const { data: settings } = await supabaseAdmin
       .from('user_settings')
@@ -264,17 +301,38 @@ const fetchUserLearningPlan = async () => {
       .maybeSingle()
     
     userDailyLimit.value = userData?.daily_limit || 20
+    learningPlans.value = []
   } catch (error) {
     console.error('Fetch learning plan error:', error)
   }
 }
 
 const categoryDisplay = computed(() => {
+  if (learningPlans.value.length > 1) {
+    return `${learningPlans.value.length}个学习计划`
+  }
   if (!userCategory.value || userCategory.value === 'all') {
     return '全部词汇'
   }
+  if (userCategory.value === 'multiple') {
+    return '多计划学习'
+  }
   return userCategory.value
 })
+
+// 分类标签映射
+const getCategoryLabel = (category) => {
+  const labels = {
+    'CET-4': 'CET-4',
+    'CET-6': 'CET-6',
+    'IELTS': 'IELTS',
+    'TOEFL': 'TOEFL',
+    'GRE': 'GRE',
+    'custom': '个人词库',
+    'all': '全部词库'
+  }
+  return labels[category] || category
+}
 
 const todayStats = computed(() => {
   const stats = {

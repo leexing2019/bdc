@@ -56,6 +56,7 @@ export const useWordStore = defineStore('words', () => {
   const loading = ref(false)
   const currentWordIndex = ref(0)
   const newWordsCompleted = ref(false) // 新词是否已完成
+  const learningPlans = ref([]) // 用户的学习计划
 
   // Computed
   const currentWord = computed(() => todayWords.value[currentWordIndex.value] || null)
@@ -183,6 +184,21 @@ export const useWordStore = defineStore('words', () => {
     newWordsCompleted.value = false // 重置新词完成状态
     
     try {
+      // 首先尝试获取用户的学习计划
+      const plans = await fetchLearningPlans()
+      
+      // 如果有设置学习计划，使用新逻辑
+      if (plans && plans.length > 0) {
+        const planWords = await fetchTodayWordsByPlans(plans)
+        if (planWords) {
+          todayWords.value = planWords
+          currentWordIndex.value = 0
+          loading.value = false
+          return
+        }
+      }
+      
+      // 回退到旧逻辑：从user_settings获取category
       // Get user's category preference and custom daily limit
       const { data: userSettings } = await supabase
         .from('user_settings')
@@ -779,6 +795,226 @@ export const useWordStore = defineStore('words', () => {
     }
   }
 
+  // ===== 学习计划管理功能 =====
+  
+  // 获取用户的学习计划
+  async function fetchLearningPlans() {
+    if (!authStore.user) return []
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_learning_plans')
+        .select('*')
+        .eq('user_id', authStore.user.id)
+        .order('priority', { ascending: true })
+
+      if (error) throw error
+      learningPlans.value = data || []
+      return data || []
+    } catch (error) {
+      console.error('获取学习计划失败:', error)
+      return []
+    }
+  }
+
+  // 添加或更新学习计划
+  async function saveLearningPlan(plan) {
+    if (!authStore.user) return { success: false, error: '请先登录' }
+    
+    try {
+      const planData = {
+        user_id: authStore.user.id,
+        category: plan.category,
+        daily_limit: plan.daily_limit || 20,
+        priority: plan.priority || 1,
+        status: plan.status || 'active',
+        updated_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('user_learning_plans')
+        .upsert(planData, { 
+          onConflict: 'user_id,category',
+          ignoreDuplicates: false 
+        })
+
+      if (error) throw error
+      
+      // 刷新学习计划列表
+      await fetchLearningPlans()
+      return { success: true }
+    } catch (error) {
+      console.error('保存学习计划失败:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 暂停学习计划
+  async function pauseLearningPlan(planId) {
+    try {
+      const { error } = await supabase
+        .from('user_learning_plans')
+        .update({ status: 'paused', updated_at: new Date().toISOString() })
+        .eq('id', planId)
+
+      if (error) throw error
+      await fetchLearningPlans()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 恢复学习计划
+  async function resumeLearningPlan(planId) {
+    try {
+      const { error } = await supabase
+        .from('user_learning_plans')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', planId)
+
+      if (error) throw error
+      await fetchLearningPlans()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 删除学习计划
+  async function deleteLearningPlan(planId) {
+    try {
+      const { error } = await supabase
+        .from('user_learning_plans')
+        .delete()
+        .eq('id', planId)
+
+      if (error) throw error
+      await fetchLearningPlans()
+      return { success: true }
+    } catch(error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 调整学习计划优先级
+  async function updatePlanPriority(planId, newPriority) {
+    try {
+      const { error } = await supabase
+        .from('user_learning_plans')
+        .update({ priority: newPriority, updated_at: new Date().toISOString() })
+        .eq('id', planId)
+
+      if (error) throw error
+      await fetchLearningPlans()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 根据学习计划获取今日单词（修改后的fetchTodayWords核心逻辑）
+  async function fetchTodayWordsByPlans(plans) {
+    if (!authStore.user) return []
+    
+    const today = new Date().toISOString().split('T')[0]
+    const resultWords = []
+    let totalDailyLimit = 0
+    
+    // 获取所有需要学习的分类
+    const activePlans = plans.filter(p => p.status === 'active')
+    const categories = activePlans.map(p => p.category)
+    totalDailyLimit = activePlans.reduce((sum, p) => sum + p.daily_limit, 0)
+    
+    // 如果没有设置学习计划，回退到旧逻辑
+    if (categories.length === 0) {
+      return null // 表示使用旧逻辑
+    }
+    
+    // 获取用户已学习的单词ID
+    const { data: allProgress } = await supabase
+      .from('user_word_progress')
+      .select('word_id, word:words(category)')
+      .eq('user_id', authStore.user.id)
+    
+    const learnedWordIds = new Set()
+    const categoryLearnedMap = {} // 按分类记录已学单词
+    
+    categories.forEach(cat => categoryLearnedMap[cat] = new Set())
+    
+    allProgress?.forEach(p => {
+      learnedWordIds.add(p.word_id)
+      if (p.word?.category) {
+        categoryLearnedMap[p.word.category]?.add(p.word_id)
+      }
+    })
+
+    // 获取今日待复习单词
+    const { data: reviewWords } = await supabase
+      .from('user_word_progress')
+      .select(`*, word:words(*)`)
+      .eq('user_id', authStore.user.id)
+      .lte('next_review_date', today)
+      .order('next_review_date', { ascending: true })
+      .limit(50)
+
+    if (reviewWords?.length) {
+      resultWords.push(...reviewWords.map(p => ({
+        ...p.word,
+        source: p.word.category === 'custom' ? 'custom' : 'institution',
+        progress: {
+          id: p.id,
+          ease_factor: p.ease_factor,
+          interval_days: p.interval_days,
+          repetitions: p.repetitions,
+          next_review_date: p.next_review_date,
+          proficiency: p.proficiency
+        },
+        isNew: false
+      })))
+    }
+
+    // 按优先级获取每个分类的新词
+    for (const plan of activePlans) {
+      const category = plan.category
+      const limit = plan.daily_limit
+      
+      // 获取该分类的新词
+      let newWordsQuery = supabase
+        .from('words')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      if (category === 'custom') {
+        newWordsQuery = newWordsQuery.eq('category', 'custom').eq('created_by', authStore.user.id)
+      } else if (category !== 'all') {
+        newWordsQuery = newWordsQuery.eq('category', category).neq('category', 'custom')
+      } else {
+        newWordsQuery = newWordsQuery.neq('category', 'custom')
+      }
+      
+      // 排除已学习的单词
+      const learnedIds = categoryLearnedMap[category] || new Set()
+      if (learnedIds.size > 0) {
+        newWordsQuery = newWordsQuery.not('id', 'in', `(${Array.from(learnedIds).join(',')})`)
+      }
+      
+      const { data: newWords } = await newWordsQuery.limit(limit)
+      
+      if (newWords?.length) {
+        resultWords.push(...newWords.map(w => ({
+          ...w,
+          source: w.category === 'custom' ? 'custom' : 'institution',
+          progress: null,
+          isNew: true,
+          planCategory: category // 标记来自哪个学习计划
+        })))
+      }
+    }
+
+    return resultWords
+  }
+
   return {
     words,
     userProgress,
@@ -788,6 +1024,7 @@ export const useWordStore = defineStore('words', () => {
     currentWord,
     proficiencyStats,
     weeklyStats,
+    learningPlans,
     fetchWords,
     fetchTodayWords,
     submitReview,
@@ -796,6 +1033,14 @@ export const useWordStore = defineStore('words', () => {
     addCustomWordsBatch,
     getCustomWords,
     deleteCustomWord,
-    approveCustomWord
+    approveCustomWord,
+    // 学习计划相关
+    fetchLearningPlans,
+    saveLearningPlan,
+    pauseLearningPlan,
+    resumeLearningPlan,
+    deleteLearningPlan,
+    updatePlanPriority,
+    fetchTodayWordsByPlans
   }
 })
