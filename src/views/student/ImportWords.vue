@@ -259,14 +259,14 @@
           <button
             v-if="parsedWords.length > 0"
             @click="handleImportClick"
-            :disabled="submitting"
-            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center"
+            :disabled="submitting || waitingForApiKey"
+            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center min-w-[160px]"
           >
             <svg v-if="submitting || waitingForApiKey" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ waitingForApiKey ? '正在处理...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
+            {{ waitingForApiKey ? '请在弹窗中操作...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
           </button>
         </div>
       </div>
@@ -648,7 +648,8 @@ const loadUserAssignedCategories = async () => {
     // 计算教师分配的单词数
     let wordCount = 0
     
-    if (userSettings?.category && userSettings.category !== 'all') {
+    // 只有当用户有具体分配的词库时才统计（不是'all'也不是null/undefined）
+    if (userSettings?.category && userSettings.category !== 'all' && userSettings.category !== null) {
       // 分配了特定词库，统计该词库的单词数
       assignedCategories.value = [userSettings.category]
       const { count } = await supabaseAdmin
@@ -673,13 +674,9 @@ const loadUserAssignedCategories = async () => {
         .neq('category', 'custom')
       wordCount = count || 0
     } else {
-      // 没有分配词库时，通过 user_word_progress 查询学生已学过的单词数
-      const { count: progressCount } = await supabaseAdmin
-        .from('user_word_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', authStore.user.id)
-      wordCount = progressCount || 0
+      // 没有分配词库（category是null/undefined或不存在user_settings），不统计教师分配的单词
       assignedCategories.value = []
+      wordCount = 0
     }
     
     assignedWordsCount.value = wordCount
@@ -799,14 +796,14 @@ const continueValidationWithApi = async () => {
 }
 
 // 忽略提示
-const ignorePrompt = () => {
+const ignorePrompt = async () => {
   if (noMorePrompt.value) {
     localStorage.setItem('smartmemo_no_deepseek_prompt', 'true')
   }
   showDeepseekPrompt.value = false
   waitingForApiKey.value = false
   // 不使用API Key继续验证
-  continueValidationWithoutApi()
+  await continueValidationWithoutApi()
 }
 
 // 不使用API Key继续验证
@@ -1187,9 +1184,9 @@ const handleImportClick = async () => {
     return
   }
   
-  // 如果弹窗已经显示，说明用户已经点击过一次，正在等待处理
+  // 如果弹窗已经显示，说明用户已经点击过一次
+  // 检查是否有API Key，如果有则继续验证，否则跳过
   if (showDeepseekPrompt.value) {
-    // 检查是否有API Key，如果有则继续验证，否则跳过
     const apiKey = promptApiKey.value.trim()
     if (apiKey) {
       await saveApiKeyAndContinue()

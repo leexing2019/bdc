@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('admin', 'student')),
-    daily_limit INTEGER DEFAULT 20,
+    daily_limit INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT true
 );
@@ -98,7 +98,7 @@ ON CONFLICT (username) DO NOTHING;
 
 -- 插入示例学生账号 (密码: student123)
 INSERT INTO users (username, password, role, daily_limit) 
-VALUES ('student', '$2a$10$UQo.VcR4Qv2G4J.6pJHjLeIxM4jLz6p5WzK8h3qNxP5xN7vK8yLmO', 'student', 20)
+VALUES ('student', '$2a$10$UQo.VcR4Qv2G4J.6pJHjLeIxM4jLz6p5WzK8h3qNxP5xN7vK8yLmO', 'student', 0)
 ON CONFLICT (username) DO NOTHING;
 
 -- 插入示例单词数据

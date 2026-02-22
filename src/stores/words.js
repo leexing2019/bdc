@@ -126,6 +126,7 @@ export const useWordStore = defineStore('words', () => {
       const userCategory = userSettings?.category
       
       // 查询1：获取公共词库单词
+      // 只有当用户有特定词库分配时才加载（不是'all'也不是null）
       let commonQuery = supabase
         .from('words')
         .select('*')
@@ -133,8 +134,12 @@ export const useWordStore = defineStore('words', () => {
         .order('created_at', { ascending: false })
       
       // 如果用户有特定的词库分配，只加载该词库
-      if (userCategory && userCategory !== 'all') {
+      // 如果category是'all'或者null/undefined，说明没有分配具体词库，不加载教师分配的单词
+      if (userCategory && userCategory !== 'all' && userCategory !== null) {
         commonQuery = commonQuery.eq('category', userCategory)
+      } else {
+        // 没有分配具体词库时，只返回空数组
+        commonQuery = commonQuery.eq('id', 0) // 返回空结果
       }
       
       const { data: commonWords, error: commonError } = await commonQuery
@@ -206,12 +211,20 @@ export const useWordStore = defineStore('words', () => {
         .eq('user_id', authStore.user.id)
         .maybeSingle()
       
-      const userCategory = userSettings?.category || 'all'
+      const userCategory = userSettings?.category || ''
       const customDailyLimit = userSettings?.custom_daily_limit || 0 // 个人词库每日数量
-      const teacherDailyLimit = authStore.user.daily_limit || 20 // 教师分配数量
+      const teacherDailyLimit = authStore.user.daily_limit || 0 // 教师分配数量
       
-      // 每日新词总量 = 教师分配 + 个人设置（不会低于教师分配）
-      const totalDailyLimit = Math.max(teacherDailyLimit, teacherDailyLimit + customDailyLimit)
+      // 每日新词总量 = 教师分配 + 个人设置
+      const totalDailyLimit = teacherDailyLimit + customDailyLimit
+      
+      // 如果没有任何学习任务（教师分配为0且没有个人词库），直接返回空数组
+      if (totalDailyLimit === 0) {
+        todayWords.value = []
+        currentWordIndex.value = 0
+        loading.value = false
+        return
+      }
       
       const today = new Date().toISOString().split('T')[0]
       
@@ -825,7 +838,7 @@ export const useWordStore = defineStore('words', () => {
       const planData = {
         user_id: authStore.user.id,
         category: plan.category,
-        daily_limit: plan.daily_limit || 20,
+        daily_limit: plan.daily_limit || 0,
         priority: plan.priority || 1,
         status: plan.status || 'active',
         updated_at: new Date().toISOString()
@@ -922,13 +935,13 @@ export const useWordStore = defineStore('words', () => {
     let totalDailyLimit = 0
     
     // 获取所有需要学习的分类
-    const activePlans = plans.filter(p => p.status === 'active')
+    const activePlans = plans.filter(p => p.status === 'active' && p.daily_limit > 0)
     const categories = activePlans.map(p => p.category)
     totalDailyLimit = activePlans.reduce((sum, p) => sum + p.daily_limit, 0)
     
     // 如果没有设置学习计划，回退到旧逻辑
-    if (categories.length === 0) {
-      return null // 表示使用旧逻辑
+    if (categories.length === 0 || totalDailyLimit === 0) {
+      return [] // 没有学习任务，返回空数组
     }
     
     // 获取用户已学习的单词ID

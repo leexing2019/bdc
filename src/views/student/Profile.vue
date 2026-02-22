@@ -109,20 +109,6 @@
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600">{{ plan.daily_limit }}词/天</span>
-                <button
-                  v-if="plan.status === 'active'"
-                  @click="togglePlanStatus(plan)"
-                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 border rounded hover:bg-gray-100"
-                >
-                  暂停
-                </button>
-                <button
-                  v-else
-                  @click="togglePlanStatus(plan)"
-                  class="px-2 py-1 text-xs text-green-600 hover:text-green-800 border border-green-200 rounded hover:bg-green-50"
-                >
-                  恢复
-                </button>
               </div>
             </div>
           </div>
@@ -132,22 +118,23 @@
         <div class="p-4 flex items-center justify-between">
           <div>
             <p class="font-medium text-gray-800">每日新词数量（教师分配）</p>
-            <p class="text-sm text-gray-500">
-              教师分配: {{ authStore.user?.admin_daily_limit || authStore.user?.daily_limit || 20 }} 词/天
+            <p class="text-sm text-gray-500 whitespace-nowrap">
+              <span v-if="(authStore.user?.admin_daily_limit || 0) > 0">教师分配: {{ authStore.user?.admin_daily_limit }} 词/天</span>
+              <span v-else class="text-orange-500">暂无分配</span>
             </p>
           </div>
           <div class="flex items-center space-x-2">
             <button
               @click="updateDailyLimitDecrease"
-              :disabled="(authStore.user?.daily_limit || 20) <= (authStore.user?.admin_daily_limit || 20)"
+              :disabled="(authStore.user?.daily_limit || 0) <= (authStore.user?.admin_daily_limit || 0)"
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               -
             </button>
-            <span class="w-12 text-center font-medium">{{ authStore.user?.daily_limit || 20 }}</span>
+            <span class="w-12 text-center font-medium">{{ authStore.user?.daily_limit || 0 }}</span>
             <button
               @click="updateDailyLimitIncrease"
-              :disabled="(authStore.user?.daily_limit || 20) >= 50"
+              :disabled="(authStore.user?.daily_limit || 0) >= 50"
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               +
@@ -159,7 +146,7 @@
         <div class="p-4 flex items-center justify-between">
           <div>
             <p class="font-medium text-gray-800">每日新词数量（个人词库）</p>
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-gray-500 whitespace-nowrap">
               个人词库每日新增: {{ customDailyLimit }} 词/天
             </p>
           </div>
@@ -191,8 +178,8 @@
                 每日学习新词总数 = 教师分配 + 个人词库
               </p>
             </div>
-            <div class="text-2xl font-bold text-blue-600">
-              {{ (authStore.user?.daily_limit || 20) + customDailyLimit }} 词/天
+            <div class="text-2xl font-bold text-blue-600 whitespace-nowrap">
+              {{ (authStore.user?.daily_limit || 0) + customDailyLimit }} 词/天
             </div>
           </div>
         </div>
@@ -255,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
@@ -285,7 +272,7 @@ const totalDailyLimit = computed(() => {
   if (learningPlans.value.length > 0) {
     return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
   }
-  return (authStore.user?.daily_limit || 20) + customDailyLimit.value
+  return (authStore.user?.daily_limit || 0) + customDailyLimit.value
 })
 
 // 分类标签映射
@@ -337,8 +324,8 @@ const togglePlanStatus = async (plan) => {
 }
 
 const updateDailyLimitDecrease = async () => {
-  const currentLimit = authStore.user?.daily_limit || 20
-  const adminLimit = authStore.user?.admin_daily_limit || 20
+  const currentLimit = authStore.user?.daily_limit || 0
+  const adminLimit = authStore.user?.admin_daily_limit || 0
   
   // 只能大于或等于教师分配的量
   if (currentLimit <= adminLimit) {
@@ -350,7 +337,7 @@ const updateDailyLimitDecrease = async () => {
 }
 
 const updateDailyLimitIncrease = async () => {
-  const currentLimit = authStore.user?.daily_limit || 20
+  const currentLimit = authStore.user?.daily_limit || 0
   
   // 最大只能调整到50
   if (currentLimit >= 50) {
@@ -392,6 +379,8 @@ const updateCustomDailyLimit = async (newLimit) => {
       
       if (!error) {
         customDailyLimit.value = newLimit
+        // 标记需要刷新首页数据
+        localStorage.setItem('smartmemo_profile_updated', 'true')
       } else {
         console.error('Update error:', error)
       }
@@ -406,6 +395,8 @@ const updateCustomDailyLimit = async (newLimit) => {
       
       if (!error) {
         customDailyLimit.value = newLimit
+        // 标记需要刷新首页数据
+        localStorage.setItem('smartmemo_profile_updated', 'true')
       }
     }
   } catch (error) {
@@ -423,32 +414,28 @@ const loadUserSettings = async () => {
       .eq('user_id', authStore.user.id)
       .maybeSingle()
     
-    if (userSettings?.custom_daily_limit) {
-      customDailyLimit.value = userSettings.custom_daily_limit
+    if (userSettings) {
+      if (userSettings.custom_daily_limit) {
+        customDailyLimit.value = userSettings.custom_daily_limit
+      }
     }
 
     // 计算总单词数（教师分配 + 个人词库）
-    // 修改：直接查询 words 表，获取所有分配给该学生的单词
+    // 只有当用户有分配的词库类别时才统计教师分配的单词
     const userCategory = userSettings?.category
     
     let assignedWordCount = 0
     
-    if (userCategory && userCategory !== 'all') {
+    // 只有当用户有具体分配的词库时才统计（不是'all'也不是null/undefined）
+    if (userCategory && userCategory !== 'all' && userCategory !== null) {
       // 特定词库
       const { count } = await supabaseAdmin
         .from('words')
         .select('*', { count: 'exact', head: true })
         .eq('category', userCategory)
       assignedWordCount = count || 0
-    } else {
-      // 全部词库（包括 'all' 和 null/未设置的情况）- 查询所有非 custom 的单词
-      // 这样可以显示教师分配的所有单词，不管学生是否已经开始学习
-      const { count } = await supabaseAdmin
-        .from('words')
-        .select('*', { count: 'exact', head: true })
-        .neq('category', 'custom')
-      assignedWordCount = count || 0
     }
+    // 如果category是'all'或者null/undefined，说明没有分配具体词库，不统计教师分配的单词
     
     // 个人词库单词数
     const { count: customCount } = await supabaseAdmin
@@ -478,6 +465,8 @@ const updateDailyLimit = async (newLimit) => {
     if (!error) {
       authStore.user.daily_limit = newLimit
       localStorage.setItem('smartmemo_user', JSON.stringify(authStore.user))
+      // 标记需要刷新首页数据
+      localStorage.setItem('smartmemo_profile_updated', 'true')
     }
   } catch (error) {
     console.error('Update daily limit error:', error)

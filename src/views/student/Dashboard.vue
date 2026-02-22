@@ -13,7 +13,7 @@
           <p class="text-sm text-gray-500">当前学习计划</p>
           <p class="text-lg font-semibold text-gray-800">{{ categoryDisplay }}</p>
         </div>
-        <div class="text-right">
+        <div class="text-right whitespace-nowrap">
           <p class="text-sm text-gray-500">每日新词</p>
           <p class="text-lg font-semibold text-primary-600">{{ userDailyLimit }} 词/天</p>
         </div>
@@ -28,7 +28,23 @@
           >
             {{ getCategoryLabel(plan.category) }}: {{ plan.daily_limit }}词/天
           </span>
+          <!-- 个人词库显示 -->
+          <span v-if="customDailyLimit > 0" class="px-2 py-1 text-xs rounded-full bg-green-50 text-green-700">
+            个人词库: {{ customDailyLimit }}词/天
+          </span>
         </div>
+      </div>
+      <!-- 个人词库详情（当没有多计划时显示） -->
+      <div v-if="learningPlans.length === 0 && customDailyLimit > 0" class="mt-3 pt-3 border-t">
+        <div class="flex flex-wrap gap-2">
+          <span class="px-2 py-1 text-xs rounded-full bg-green-50 text-green-700">
+            个人词库: {{ customDailyLimit }}词/天
+          </span>
+        </div>
+      </div>
+      <!-- 无计划时显示提示 -->
+      <div v-if="userDailyLimit === 0" class="mt-3 pt-3 border-t">
+        <p class="text-sm text-gray-400">暂无教师分配任务，可导入个人词库或联系教师分配学习内容</p>
       </div>
     </div>
 
@@ -44,12 +60,16 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </p>
+            <p v-else-if="userDailyLimit === 0" class="text-2xl font-bold text-gray-400">暂无计划</p>
             <p v-else-if="todayCompleted" class="text-2xl font-bold text-green-600">已完成</p>
             <p v-else class="text-2xl font-bold text-gray-800">{{ todayStats.total }}</p>
           </div>
           <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
             <svg v-if="todayCompleted" class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg v-else-if="userDailyLimit === 0" class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
             <svg v-else class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -88,7 +108,7 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </p>
-            <p v-else class="text-2xl font-bold text-green-600">{{ todayStats.new }}</p>
+            <p v-else class="text-2xl font-bold text-green-600">{{ userDailyLimit === 0 ? 0 : todayStats.new }}</p>
           </div>
           <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,12 +250,19 @@ const todayCompleted = ref(false)
 
 // Learning plan data
 const userCategory = ref('')
-const userDailyLimit = ref(20)
+const userDailyLimit = ref(0)  // 修改默认值为0
+const customDailyLimit = ref(0) // 个人词库每日新词数量
 const learningPlans = ref([])
 
 // 检查今日是否已完成学习任务
 const checkTodayCompletion = async () => {
   if (!authStore.user) return
+  
+  // 如果没有每日任务，不存在"完成"的概念
+  if (userDailyLimit.value === 0) {
+    todayCompleted.value = false
+    return
+  }
   
   const today = new Date().toISOString().split('T')[0]
   
@@ -274,6 +301,15 @@ const fetchUserLearningPlan = async () => {
       learningPlans.value = plans
       userDailyLimit.value = plans.reduce((sum, p) => sum + p.daily_limit, 0)
       
+      // 仍然需要加载个人词库的每日新词数量
+      const { data: settings } = await supabaseAdmin
+        .from('user_settings')
+        .select('custom_daily_limit')
+        .eq('user_id', authStore.user.id)
+        .maybeSingle()
+      customDailyLimit.value = settings?.custom_daily_limit || 0
+      userDailyLimit.value += customDailyLimit.value
+      
       // 显示第一个计划的分类作为主要显示
       if (plans.length === 1) {
         userCategory.value = plans[0].category
@@ -287,32 +323,47 @@ const fetchUserLearningPlan = async () => {
     // Get user settings for category - use admin client to bypass RLS
     const { data: settings } = await supabaseAdmin
       .from('user_settings')
-      .select('category')
+      .select('category, custom_daily_limit')
       .eq('user_id', authStore.user.id)
       .maybeSingle()
     
-    userCategory.value = settings?.category || 'all'
+    userCategory.value = settings?.category || ''
     
-    // Get daily limit from user
+    // Get daily limit from user (teacher assigned) - 默认为0表示没有分配
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('daily_limit')
       .eq('id', authStore.user.id)
       .maybeSingle()
     
-    userDailyLimit.value = userData?.daily_limit || 20
+    // 教师分配的每日新词（如果没有分配任务，默认为0）
+    const teacherDailyLimit = userData?.daily_limit || 0
+    customDailyLimit.value = settings?.custom_daily_limit || 0
+    userDailyLimit.value = teacherDailyLimit + customDailyLimit.value
     learningPlans.value = []
   } catch (error) {
     console.error('Fetch learning plan error:', error)
+    // 出错时也设置为0
+    userDailyLimit.value = 0
+    customDailyLimit.value = 0
+    learningPlans.value = []
   }
 }
 
 const categoryDisplay = computed(() => {
+  // 如果有学习计划，显示计划数量
   if (learningPlans.value.length > 1) {
     return `${learningPlans.value.length}个学习计划`
   }
-  if (!userCategory.value || userCategory.value === 'all') {
-    return '全部词汇'
+  // 如果没有学习计划且没有每日任务，显示暂无学习计划
+  if (userDailyLimit.value === 0) {
+    return '暂无学习计划'
+  }
+  if (learningPlans.value.length === 1) {
+    return getCategoryLabel(learningPlans.value[0].category)
+  }
+  if (!userCategory.value || userCategory.value === 'all' || userCategory.value === '') {
+    return '暂无学习计划'
   }
   if (userCategory.value === 'multiple') {
     return '多计划学习'
@@ -387,23 +438,38 @@ const createChart = () => {
 
 onMounted(async () => {
   // 每次加载都获取最新数据
+  // fetchWords获取用户学习进度（用于词汇掌握统计）
+  // fetchTodayWords获取今日学习单词
+  await loadDashboardData()
+  
+  // 监听 localStorage 变化（从个人中心返回时刷新数据）
+  window.addEventListener('storage', handleStorageChange)
+})
+
+// 处理 localStorage 变化
+const handleStorageChange = (event) => {
+  if (event.key === 'smartmemo_profile_updated') {
+    loadDashboardData()
+    // 清除标记
+    localStorage.removeItem('smartmemo_profile_updated')
+  }
+}
+
+// 加载首页数据
+const loadDashboardData = async () => {
   await Promise.all([
     fetchUserLearningPlan(),
+    wordStore.fetchWords(), // 获取学习进度用于统计
     wordStore.fetchTodayWords(),
     checkTodayCompletion()
   ])
   setTimeout(createChart, 100)
-})
+}
 
-// 监听路由变化，刷新数据（从背诵页面返回时）
+// 监听路由变化，刷新数据（从背诵页面或个人中心返回时）
 watch(() => route.path, async (newPath) => {
   if (newPath === '/student/dashboard') {
-    await Promise.all([
-      fetchUserLearningPlan(),
-      wordStore.fetchTodayWords(),
-      checkTodayCompletion()
-    ])
-    setTimeout(createChart, 100)
+    await loadDashboardData()
   }
 })
 

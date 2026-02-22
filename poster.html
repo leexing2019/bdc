@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能英语单词学习系统 - 功能介绍</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px;
+        }
+        
+        .poster {
+            width: 800px;
+            max-width: 100%;
+            margin: 0 auto;
+            background: #F8FAFC;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            padding: 48px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+        
+        .logo svg {
+            width: 48px;
+            height: 48px;
+            color: white;
+        }
+        
+        .title {
+            font-size: 42px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        
+        /* Section */
+        .section {
+            padding: 32px;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .section-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .section-title h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        /* Student Section */
+        .student-section .section-icon {
+            background: linear-gradient(135deg, #10B981, #34D399);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .student-section .section-icon svg {
+            color: white;
+        }
+        
+        .student-section .section-title h2 {
+            color: #10B981;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .student-section .feature-icon {
+            background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+        }
+        
+        .student-section .feature-icon svg {
+            color: #10B981;
+        }
+        
+        .feature-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 4px;
+        }
+        
+        .feature-content p {
+            font-size: 13px;
+            color: #64748B;
+            line-height: 1.5;
+        }
+        
+        /* Admin Section */
+        .admin-section {
+            background: white;
+            border-radius: 20px;
+            margin: 0 32px 32px;
+            padding: 28px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        
+        .admin-section .section-icon {
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .admin-section .section-icon svg {
+            color: white;
+        }
+        
+        .admin-section .section-title h2 {
+            color: #6366F1;
+        }
+        
+        .admin-section .feature-icon {
+            background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+        }
+        
+        .admin-section .feature-icon svg {
+            color: #6366F1;
+        }
+        
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #E2E8F0, transparent);
+            margin: 24px 32px;
+        }
+        
+        /* Footer */
+        .footer {
+            background: #1E293B;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .footer p {
+            color: #64748B;
+            font-size: 14px;
+        }
+        
+        .footer .highlight {
+            color: #94A3B8;
+            font-weight: 600;
+        }
+        
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .badge-new {
+            background: linear-gradient(135deg, #F59E0B, #FBBF24);
+            color: white;
+        }
+        
+        .badge-hot {
+            background: linear-gradient(135deg, #EF4444, #F87171);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    <path d="M8 7h8"></path>
+                    <path d="M8 11h6"></path>
+                </svg>
+            </div>
+            <h1 class="title">智能英语单词学习系统</h1>
+            <p class="subtitle">Smart Word Master · 高效学习 · 智能管理</p>
+        </div>
+        
+        <!-- Student Section -->
+        <div class="section student-section">
+            <div class="section-title">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h2>学生端 · Student Terminal</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>智能背诵 <span class="badge badge-new">SM-2算法</span></h3>
+                        <p>科学间隔重复，智能安排复习，记忆更牢固</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>复习巩固</h3>
+                        <p>每日任务完成后自动进入复习模式</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>多词库选择</h3>
+                        <p>CET-4/CET-6/雅思/托福，多种词库可选</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>批量导入 <span class="badge badge-hot">新功能</span></h3>
+                        <p>支持Excel/TXT文件，AI生成例句</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>学习统计</h3>
+                        <p>可视化进度图表，掌握学习情况</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 02.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>个人中心</h3>
+                        <p>每日任务设置，密码修改</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Admin Section -->
+        <div class="admin-section">
+            <div class="section-title">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                </div>
+                <h2>管理端 · Admin Terminal</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>用户管理</h3>
+                        <p>学生账号管理，学习计划配置</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>词库管理 <span class="badge badge-new">新建词库</span></h3>
+                        <p>单词增删改查，批量导入导出</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>学习计划 <span class="badge badge-hot">多计划</span></h3>
+                        <p>为学生配置多个学习计划，灵活分配任务</p>
+                    </div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x11="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                    <div class="feature-content">
+                        <h3>学习统计</h3>
+                        <p>班级/个人学习数据分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p> Empowering Education with Intelligence · 智能赋能教育</p>
+        </div>
+    </div>
+</body>
+</html>

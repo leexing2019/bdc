@@ -46,13 +46,13 @@
 
     <!-- Empty State -->
     <div v-if="wordStore.todayWords.length === 0" class="flex flex-col items-center justify-center py-16">
-      <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
-        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
       </div>
-      <h2 class="text-xl font-semibold text-gray-800 mb-2">太棒了！</h2>
-      <p class="text-gray-500 mb-6">今天的任务已经完成啦~</p>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2">暂无计划</h2>
+      <p class="text-gray-500 mb-6">暂未分配学习任务，请联系教师分配或导入个人词库</p>
       <router-link
         to="/student/dashboard"
         class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
