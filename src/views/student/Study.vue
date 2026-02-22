@@ -94,7 +94,7 @@
           @click="continueStudy"
           class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
         >
-          继续下一轮
+          复习巩固
         </button>
         <router-link
           to="/student/dashboard"
@@ -361,13 +361,6 @@
             @click="skipDictation"
             :disabled="isTransitioning"
             class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3 disabled:opacity-50"
-          >
-            不确定
-          </button>
-          <button
-            v-if="dictationResult === null"
-            @click="skipDictation"
-            class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3"
           >
             不确定
           </button>
@@ -1125,8 +1118,9 @@ const checkCompleted = async () => {
   }
 }
 
-// 继续学习新的一轮
+// 继续学习新的一轮 - 改为复习模式，复习已学过的单词
 const continueStudy = async () => {
+  // 重新获取今日单词（包含复习和新词）
   await wordStore.fetchTodayWords()
   currentIndex.value = 0
   isSessionCompleted.value = false
@@ -1136,8 +1130,16 @@ const continueStudy = async () => {
   studyStartTime.value = Date.now()
   sessionNewWords.value = 0
   sessionReviewedWords.value = 0
+  
+  // 随机选择模式
   randomMode()
+  
+  // 设置为复习模式（不再获取新词）
+  isReviewMode.value = true
 }
+
+// 标记是否为复习模式
+const isReviewMode = ref(false)
 
 // 记录学习时长到数据库
 const recordStudyDuration = async () => {

@@ -32,10 +32,14 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </p>
+            <p v-else-if="todayCompleted" class="text-2xl font-bold text-green-600">已完成</p>
             <p v-else class="text-2xl font-bold text-gray-800">{{ todayStats.total }}</p>
           </div>
           <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="todayCompleted" class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg v-else class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
@@ -115,8 +119,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="font-semibold">开始背诵</span>
-          <span class="text-sm text-primary-100 mt-1">{{ todayStats.total }} 个单词</span>
+          <span class="font-semibold">{{ todayCompleted ? '复习巩固' : '开始背诵' }}</span>
+          <span class="text-sm text-primary-100 mt-1">{{ todayCompleted ? '巩固已学知识' : todayStats.total + ' 个单词' }}</span>
         </router-link>
 
         <router-link
@@ -209,9 +213,35 @@ const wordStore = useWordStore()
 const chartCanvas = ref(null)
 let chartInstance = null
 
+// 今日任务是否完成
+const todayCompleted = ref(false)
+
 // Learning plan data
 const userCategory = ref('')
 const userDailyLimit = ref(20)
+
+// 检查今日是否已完成学习任务
+const checkTodayCompletion = async () => {
+  if (!authStore.user) return
+  
+  const today = new Date().toISOString().split('T')[0]
+  
+  try {
+    // 查询今天学习的新词数量（repetitions = 1 表示第一次学习）
+    const { count: newWordsLearned } = await supabase
+      .from('user_word_progress')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', authStore.user.id)
+      .gte('last_review_date', today)
+      .eq('repetitions', 1)
+    
+    // 如果今天学习的新词数量 >= 每日限制，则认为已完成
+    todayCompleted.value = newWordsLearned >= userDailyLimit.value
+  } catch (error) {
+    console.error('检查今日完成状态失败:', error)
+    todayCompleted.value = false
+  }
+}
 
 const fetchUserLearningPlan = async () => {
   if (!authStore.user) return
@@ -301,7 +331,8 @@ onMounted(async () => {
   // 每次加载都获取最新数据
   await Promise.all([
     fetchUserLearningPlan(),
-    wordStore.fetchTodayWords()
+    wordStore.fetchTodayWords(),
+    checkTodayCompletion()
   ])
   setTimeout(createChart, 100)
 })
@@ -311,7 +342,8 @@ watch(() => route.path, async (newPath) => {
   if (newPath === '/student/dashboard') {
     await Promise.all([
       fetchUserLearningPlan(),
-      wordStore.fetchTodayWords()
+      wordStore.fetchTodayWords(),
+      checkTodayCompletion()
     ])
     setTimeout(createChart, 100)
   }

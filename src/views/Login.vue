@@ -56,18 +56,12 @@
         <!-- Demo Accounts -->
         <div class="mt-6 pt-6 border-t border-gray-200">
           <p class="text-sm text-gray-500 text-center mb-3">演示账号</p>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 gap-3">
             <button
               @click="fillDemo('student', 'student123')"
               class="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm hover:bg-green-100 transition"
             >
               学生账号
-            </button>
-            <button
-              @click="fillDemo('admin', 'admin123')"
-              class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm hover:bg-blue-100 transition"
-            >
-              管理员账号
             </button>
           </div>
         </div>
