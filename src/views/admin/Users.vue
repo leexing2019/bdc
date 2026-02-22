@@ -450,19 +450,46 @@ const showLearningPlansModal = ref(false)
 const userPlans = ref([])
 const loadingPlans = ref(false)
 
-// 可用的分类选项
-const availableCategories = [
+// 可用的分类选项（从数据库动态加载）
+const availableCategories = ref([
   { value: 'CET-4', label: 'CET-4' },
   { value: 'CET-6', label: 'CET-6' },
-  { value: 'IELTS', label: 'IELTS' },
-  { value: 'TOEFL', label: 'TOEFL' },
-  { value: 'GRE', label: 'GRE' },
   { value: 'custom', label: '个人词库' },
   { value: 'all', label: '全部词库' }
-]
+])
+
+// 从数据库加载词库分类
+const loadCategories = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('words')
+      .select('category')
+    
+    if (error) {
+      console.error('加载词库分类失败:', error)
+      return
+    }
+    
+    if (data) {
+      const uniqueCategories = [...new Set(data.map(w => w.category).filter(c => c && c.trim() && c !== 'custom'))]
+      // 更新分类列表，保留特殊选项
+      const specialCategories = [
+        { value: 'custom', label: '个人词库' },
+        { value: 'all', label: '全部词库' }
+      ]
+      const newCategories = [
+        ...uniqueCategories.map(cat => ({ value: cat, label: cat })),
+        ...specialCategories
+      ]
+      availableCategories.value = newCategories
+    }
+  } catch (error) {
+    console.error('加载词库分类失败:', error)
+  }
+}
 
 const getCategoryLabel = (category) => {
-  const cat = availableCategories.find(c => c.value === category)
+  const cat = availableCategories.value.find(c => c.value === category)
   return cat ? cat.label : category
 }
 
@@ -716,6 +743,8 @@ const viewUserWords = async (user) => {
 const manageLearningPlans = async (user) => {
   selectedUser.value = user
   showLearningPlansModal.value = true
+  // 同时加载词库分类
+  await loadCategories()
   await fetchUserPlans(user.id)
 }
 
