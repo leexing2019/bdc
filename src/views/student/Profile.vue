@@ -46,14 +46,12 @@
         <h3 class="font-semibold text-gray-800">学习设置</h3>
       </div>
       <div class="divide-y divide-gray-100">
+        <!-- 教师分配每日新词数量 -->
         <div class="p-4 flex items-center justify-between">
           <div>
-            <p class="font-medium text-gray-800">每日新词数量</p>
+            <p class="font-medium text-gray-800">每日新词数量（教师分配）</p>
             <p class="text-sm text-gray-500">
               教师分配: {{ authStore.user?.admin_daily_limit || authStore.user?.daily_limit || 20 }} 词/天
-              <span v-if="authStore.user?.daily_limit > (authStore.user?.admin_daily_limit || 20)" class="text-green-600 ml-2">
-                (已调整为 {{ authStore.user?.daily_limit }} 词/天)
-              </span>
             </p>
           </div>
           <div class="flex items-center space-x-2">
@@ -72,6 +70,48 @@
             >
               +
             </button>
+          </div>
+        </div>
+
+        <!-- 个人词库每日新词数量 -->
+        <div class="p-4 flex items-center justify-between">
+          <div>
+            <p class="font-medium text-gray-800">每日新词数量（个人词库）</p>
+            <p class="text-sm text-gray-500">
+              个人词库每日新增: {{ customDailyLimit }} 词/天
+            </p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="updateCustomDailyLimitDecrease"
+              :disabled="customDailyLimit <= 0"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              -
+            </button>
+            <span class="w-12 text-center font-medium">{{ customDailyLimit }}</span>
+            <button
+              @click="updateCustomDailyLimitIncrease"
+              :disabled="customDailyLimit >= 30"
+              class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- 每日任务总量 -->
+        <div class="p-4 bg-blue-50">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-gray-800">每日任务总量</p>
+              <p class="text-sm text-gray-500">
+                每日学习新词总数 = 教师分配 + 个人词库
+              </p>
+            </div>
+            <div class="text-2xl font-bold text-blue-600">
+              {{ (authStore.user?.daily_limit || 20) + customDailyLimit }} 词/天
+            </div>
           </div>
         </div>
       </div>
@@ -133,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
@@ -151,6 +191,7 @@ const passwordForm = reactive({
 const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordLoading = ref(false)
+const customDailyLimit = ref(0) // 个人词库每日背诵数量
 
 const updateDailyLimitDecrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 20
@@ -175,6 +216,72 @@ const updateDailyLimitIncrease = async () => {
   
   const newLimit = Math.min(50, currentLimit + 5)
   await updateDailyLimit(newLimit)
+}
+
+const updateCustomDailyLimitDecrease = async () => {
+  if (customDailyLimit.value <= 0) return
+  const newLimit = Math.max(0, customDailyLimit.value - 5)
+  await updateCustomDailyLimit(newLimit)
+}
+
+const updateCustomDailyLimitIncrease = async () => {
+  if (customDailyLimit.value >= 30) return
+  const newLimit = Math.min(30, customDailyLimit.value + 5)
+  await updateCustomDailyLimit(newLimit)
+}
+
+const updateCustomDailyLimit = async (newLimit) => {
+  try {
+    // 检查user_settings是否存在
+    const { data: existingSettings } = await supabase
+      .from('user_settings')
+      .select('id')
+      .eq('user_id', authStore.user.id)
+      .maybeSingle()
+
+    if (existingSettings) {
+      // 更新现有设置
+      const { error } = await supabase
+        .from('user_settings')
+        .update({ custom_daily_limit: newLimit })
+        .eq('user_id', authStore.user.id)
+      
+      if (!error) {
+        customDailyLimit.value = newLimit
+      }
+    } else {
+      // 创建新设置
+      const { error } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: authStore.user.id,
+          custom_daily_limit: newLimit
+        })
+      
+      if (!error) {
+        customDailyLimit.value = newLimit
+      }
+    }
+  } catch (error) {
+    console.error('Update custom daily limit error:', error)
+  }
+}
+
+// 加载用户设置
+const loadUserSettings = async () => {
+  try {
+    const { data: userSettings } = await supabase
+      .from('user_settings')
+      .select('custom_daily_limit')
+      .eq('user_id', authStore.user.id)
+      .maybeSingle()
+    
+    if (userSettings?.custom_daily_limit) {
+      customDailyLimit.value = userSettings.custom_daily_limit
+    }
+  } catch (error) {
+    console.error('Load user settings error:', error)
+  }
 }
 
 const updateDailyLimit = async (newLimit) => {
@@ -236,4 +343,8 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+onMounted(() => {
+  loadUserSettings()
+})
 </script>

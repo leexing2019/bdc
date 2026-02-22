@@ -1,5 +1,28 @@
 <template>
   <div class="min-h-[calc(100vh-8rem)] pb-20 lg:pb-0">
+    <!-- 复习提示弹窗 -->
+    <div v-if="showReviewPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+        <div class="text-center">
+          <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800 mb-3">复习时间到！</h3>
+          <p class="text-gray-600 mb-6">
+            今日的任务已完成，不再进行新词的背诵，现在即将进行复习流程。
+          </p>
+          <button
+            @click="confirmReview"
+            class="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+          >
+            开始复习
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-bold text-gray-800">
@@ -610,6 +633,9 @@ const clozeExample = ref('')
 const clozeTargetForm = ref('') // 例句中使用的正确变形形式
 const clozeLoading = ref(false) // 例句加载状态
 
+// 复习提示弹窗
+const showReviewPrompt = ref(false)
+
 // Fetch example sentence from Dictionary API
 const fetchClozeExample = async (word) => {
   if (!word) return { example: '', targetForm: '' }
@@ -710,6 +736,20 @@ const previewProgress = computed(() => {
 const isPreviewComplete = computed(() => previewIndex.value >= wordStore.todayWords.length)
 
 const startStudy = () => {
+  // 检查是否已完成新词任务，如果是，显示复习提示
+  if (wordStore.newWordsCompleted) {
+    showReviewPrompt.value = true
+    return
+  }
+  isPreviewMode.value = false
+  isSessionCompleted.value = false
+  currentIndex.value = 0
+  randomMode()
+}
+
+// 确认开始复习
+const confirmReview = () => {
+  showReviewPrompt.value = false
   isPreviewMode.value = false
   isSessionCompleted.value = false
   currentIndex.value = 0
@@ -722,6 +762,11 @@ const nextPreviewWord = () => {
 }
 
 const skipPreview = () => {
+  // 检查是否已完成新词任务，如果是，显示复习提示
+  if (wordStore.newWordsCompleted) {
+    showReviewPrompt.value = true
+    return
+  }
   isPreviewMode.value = false
   currentIndex.value = 0
   randomMode()

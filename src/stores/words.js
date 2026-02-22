@@ -55,6 +55,7 @@ export const useWordStore = defineStore('words', () => {
   const todayWords = ref([])
   const loading = ref(false)
   const currentWordIndex = ref(0)
+  const newWordsCompleted = ref(false) // 新词是否已完成
 
   // Computed
   const currentWord = computed(() => todayWords.value[currentWordIndex.value] || null)
@@ -179,19 +180,22 @@ export const useWordStore = defineStore('words', () => {
     if (!authStore.user) return
     
     loading.value = true
+    newWordsCompleted.value = false // 重置新词完成状态
     
     try {
-      // Skip refreshUser - we already have user data from login
-      // This saves one database call
-      
-      // Get user's category preference
+      // Get user's category preference and custom daily limit
       const { data: userSettings } = await supabase
         .from('user_settings')
-        .select('category')
+        .select('category, custom_daily_limit')
         .eq('user_id', authStore.user.id)
         .maybeSingle()
       
       const userCategory = userSettings?.category || 'all'
+      const customDailyLimit = userSettings?.custom_daily_limit || 0 // 个人词库每日数量
+      const teacherDailyLimit = authStore.user.daily_limit || 20 // 教师分配数量
+      
+      // 每日新词总量 = 教师分配 + 个人设置（不会低于教师分配）
+      const totalDailyLimit = Math.max(teacherDailyLimit, teacherDailyLimit + customDailyLimit)
       
       const today = new Date().toISOString().split('T')[0]
       
@@ -214,33 +218,66 @@ export const useWordStore = defineStore('words', () => {
       // Get user's learned word IDs
       const { data: allProgress } = await supabase
         .from('user_word_progress')
-        .select('word_id')
+        .select('word_id, word:words(category)')
         .eq('user_id', authStore.user.id)
       
-      const learnedWordIds = allProgress?.map(p => p.word_id) || []
+      // 分类已学习单词ID
+      const institutionLearnedIds = []
+      const customLearnedIds = []
       
-      // Get new words to learn - based on category
-      let newWordsQuery = supabase
+      allProgress?.forEach(p => {
+        if (p.word?.category === 'custom') {
+          customLearnedIds.push(p.word_id)
+        } else {
+          institutionLearnedIds.push(p.word_id)
+        }
+      })
+
+      // 获取机构词库新词
+      let institutionNewWordsQuery = supabase
         .from('words')
         .select('*')
+        .neq('category', 'custom')
         .order('created_at', { ascending: false })
 
-      // Filter by category if user has a specific category set
       if (userCategory && userCategory !== 'all') {
-        newWordsQuery = newWordsQuery.eq('category', userCategory)
+        institutionNewWordsQuery = institutionNewWordsQuery.eq('category', userCategory)
       }
 
-      // Exclude already learned words
-      if (learnedWordIds.length > 0) {
-        newWordsQuery = newWordsQuery.not('id', 'in', `(${learnedWordIds.join(',')})`)
+      // 排除已学习的机构词库单词
+      if (institutionLearnedIds.length > 0) {
+        institutionNewWordsQuery = institutionNewWordsQuery.not('id', 'in', `(${institutionLearnedIds.join(',')})`)
       }
 
-      const { data: newWords, error: newError } = await newWordsQuery
-        .limit(authStore.user.daily_limit || 20)
+      const { data: institutionNewWords } = await institutionNewWordsQuery
+        .limit(teacherDailyLimit)
 
-      if (newError) {
-        console.error('获取新词失败:', newError)
+      // 获取个人词库新词
+      let customNewWordsQuery = supabase
+        .from('words')
+        .select('*')
+        .eq('category', 'custom')
+        .eq('created_by', authStore.user.id)
+        .order('created_at', { ascending: false })
+
+      // 排除已学习的个人单词
+      if (customLearnedIds.length > 0) {
+        customNewWordsQuery = customNewWordsQuery.not('id', 'in', `(${customLearnedIds.join(',')})`)
       }
+
+      const { data: customNewWords } = await customNewWordsQuery
+        .limit(customDailyLimit)
+
+      // 合并新词：机构词库 + 个人词库
+      const newWords = [
+        ...(institutionNewWords || []),
+        ...(customNewWords || [])
+      ].slice(0, totalDailyLimit)
+
+      // 检查是否已完成新词任务（当新词数量少于应该获取的数量时）
+      const actualNewWordCount = newWords.length
+      newWordsCompleted.value = actualNewWordCount < totalDailyLimit && 
+        ((institutionNewWords?.length || 0) + (customNewWords?.length || 0)) > 0
 
       // Combine and format - ensure we always have some words to learn
       const combinedWords = [
@@ -417,41 +454,67 @@ export const useWordStore = defineStore('words', () => {
       let exampleSentence = ''
       let phonetic = ''
       let audioUrl = ''
-      const wordValidation = await fetchWordData(wordData.spelling.trim())
       
-      if (wordValidation.definition || wordValidation.phonetic) {
-        phonetic = wordValidation.phonetic || ''
-        // 获取例句（注意：API返回的是example而非examples）
-        if (wordValidation.example) {
-          exampleSentence = wordValidation.example
+      // 如果用户已经提供了例句，直接使用（前端已根据词性获取）
+      if (wordData.example_sentence) {
+        exampleSentence = wordData.example_sentence
+        // 同时尝试获取音标和音频
+        const wordValidation = await fetchWordData(wordData.spelling.trim(), null, wordData.partOfSpeech || null)
+        if (wordValidation.phonetic) {
+          phonetic = wordValidation.phonetic
         }
-        // 获取音频URL
         if (wordValidation.audio) {
           audioUrl = wordValidation.audio
         }
-      }
+      } else {
+        // 如果没有提供例句，则自动获取
+        const wordValidation = await fetchWordData(wordData.spelling.trim(), null, wordData.partOfSpeech || null)
+        
+        if (wordValidation.definition || wordValidation.phonetic) {
+          phonetic = wordValidation.phonetic || ''
+          // 获取例句（注意：API返回的是example而非examples）
+          if (wordValidation.example) {
+            exampleSentence = wordValidation.example
+          }
+          // 获取音频URL
+          if (wordValidation.audio) {
+            audioUrl = wordValidation.audio
+          }
+        }
 
-      // 如果没有从API获取到例句，尝试使用DeepSeek生成
-      if (!exampleSentence) {
-        const apiKey = localStorage.getItem('smartmemo_deepseek_key')
-        if (apiKey) {
-          try {
-            const generatedExample = await generateExampleWithDeepSeek(
-              wordData.spelling.trim(),
-              wordData.meaning,
-              apiKey,
-              wordData.partOfSpeech || null
-            )
-            if (generatedExample) {
-              exampleSentence = generatedExample
+        // 如果没有从API获取到例句，尝试使用DeepSeek生成
+        if (!exampleSentence) {
+          const apiKey = localStorage.getItem('smartmemo_deepseek_key')
+          if (apiKey) {
+            try {
+              const generatedExample = await generateExampleWithDeepSeek(
+                wordData.spelling.trim(),
+                wordData.meaning,
+                apiKey,
+                wordData.partOfSpeech || null
+              )
+              if (generatedExample) {
+                exampleSentence = generatedExample
+              }
+            } catch (e) {
+              console.warn('DeepSeek例句生成失败:', e)
             }
-          } catch (e) {
-            console.warn('DeepSeek例句生成失败:', e)
           }
         }
       }
 
       // 直接添加到words表（用户自定义单词），包含例句、音标和音频
+      console.log('插入单词数据:', {
+        spelling: wordData.spelling.trim(),
+        part_of_speech: wordData.partOfSpeech || '',
+        meaning: wordData.meaning,
+        phonetic: phonetic,
+        audio_url: audioUrl,
+        example_sentence: exampleSentence,
+        category: 'custom',
+        created_by: authStore.user.id
+      })
+      
       const { error } = await supabase
         .from('words')
         .insert({
@@ -465,7 +528,10 @@ export const useWordStore = defineStore('words', () => {
           created_by: authStore.user.id
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('插入单词失败:', error)
+        throw error
+      }
       return { success: true }
     } catch (error) {
       return { success: false, error: error.message }
@@ -545,21 +611,36 @@ export const useWordStore = defineStore('words', () => {
         let exampleSentence = ''
         let phonetic = ''
         let audioUrl = ''
-        const wordValidation = await fetchWordData(word.spelling.trim())
         
-        if (wordValidation.definition || wordValidation.phonetic) {
-          phonetic = wordValidation.phonetic || ''
-          // 获取例句（注意：API返回的是example而非examples）
-          if (wordValidation.example) {
-            exampleSentence = wordValidation.example
-          }
-          // 获取音频URL
-          if (wordValidation.audio) {
-            audioUrl = wordValidation.audio
-          }
-        } else {
-          // API验证失败，记录为无效但不阻止添加
+        // 如果用户已经提供了例句，直接使用（前端已根据词性获取）
+        if (word.example_sentence) {
+          exampleSentence = word.example_sentence
+        }
+        
+        // 无论是否有例句，都需要传递词性参数来验证和获取音标/音频
+        const wordValidation = await fetchWordData(word.spelling.trim(), null, word.partOfSpeech || null)
+        
+        // 检查单词是否有效（必须有 definition 或 phonetic）
+        const isValidWord = !!(wordValidation.definition || wordValidation.phonetic)
+        
+        if (!isValidWord) {
+          // 单词拼写无效，记录为无效并跳过添加
           results.invalid.push(word.spelling)
+          continue
+        }
+        
+        // 单词有效，获取音标和例句
+        if (wordValidation.phonetic) {
+          phonetic = wordValidation.phonetic
+        }
+        // 获取例句（注意：API返回的是example而非examples）
+        // 只有在没有用户提供例句的情况下，才使用API获取的例句
+        if (!exampleSentence && wordValidation.example) {
+          exampleSentence = wordValidation.example
+        }
+        // 获取音频URL
+        if (wordValidation.audio) {
+          audioUrl = wordValidation.audio
         }
 
         // 如果没有从API获取到例句，尝试使用DeepSeek生成
@@ -583,6 +664,17 @@ export const useWordStore = defineStore('words', () => {
         }
 
         // 添加单词（包括音标、例句和音频）
+        console.log('批量插入单词数据:', {
+          spelling: word.spelling.trim(),
+          part_of_speech: word.partOfSpeech || '',
+          meaning: word.meaning,
+          phonetic: phonetic,
+          audio_url: audioUrl,
+          example_sentence: exampleSentence,
+          category: 'custom',
+          created_by: authStore.user.id
+        })
+        
         const { error } = await supabase
           .from('words')
           .insert({
@@ -597,6 +689,7 @@ export const useWordStore = defineStore('words', () => {
           })
 
         if (error) {
+          console.error('批量插入单词失败:', error)
           results.errors.push({ word: word.spelling, error: error.message })
         } else {
           results.success.push(word.spelling)
