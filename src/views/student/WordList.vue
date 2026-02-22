@@ -149,7 +149,6 @@
         <p class="text-gray-500">暂无单词</p>
       </div>
     </div>
-    </div>
 
     <!-- Word Detail Modal -->
     <div v-if="selectedWord" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click="selectedWord = null">
@@ -304,9 +303,10 @@ const loading = ref(true) // 加载状态
 // 页面加载时获取单词数据
 onMounted(async () => {
   loading.value = true
-  if (wordStore.words.length === 0) {
-    await wordStore.fetchWords()
-  }
+  // 每次都重新获取数据，确保显示加载动画
+  await wordStore.fetchWords()
+  // 添加短暂延迟确保加载动画可见（至少300ms）
+  await new Promise(resolve => setTimeout(resolve, 300))
   loading.value = false
 })
 

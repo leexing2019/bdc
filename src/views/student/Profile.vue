@@ -326,6 +326,7 @@ const loadUserSettings = async () => {
     }
 
     // 计算总单词数（教师分配 + 个人词库）
+    // 修改：直接查询 words 表，获取所有分配给该学生的单词
     const userCategory = userSettings?.category
     
     let assignedWordCount = 0
@@ -337,8 +338,9 @@ const loadUserSettings = async () => {
         .select('*', { count: 'exact', head: true })
         .eq('category', userCategory)
       assignedWordCount = count || 0
-    } else if (userCategory === 'all') {
-      // 全部词库
+    } else {
+      // 全部词库（包括 'all' 和 null/未设置的情况）- 查询所有非 custom 的单词
+      // 这样可以显示教师分配的所有单词，不管学生是否已经开始学习
       const { count } = await supabaseAdmin
         .from('words')
         .select('*', { count: 'exact', head: true })

@@ -258,15 +258,15 @@
           </button>
           <button
             v-if="parsedWords.length > 0"
-            @click="submitWords"
-            :disabled="submitting || waitingForApiKey"
+            @click="handleImportClick"
+            :disabled="submitting"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center"
           >
             <svg v-if="submitting || waitingForApiKey" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ waitingForApiKey ? '等待API Key...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
+            {{ waitingForApiKey ? '正在处理...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
           </button>
         </div>
       </div>
@@ -550,7 +550,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useWordStore } from '@/stores/words'
 import { useAuthStore } from '@/stores/auth'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
@@ -673,9 +673,13 @@ const loadUserAssignedCategories = async () => {
         .neq('category', 'custom')
       wordCount = count || 0
     } else {
-      // 没有分配词库
+      // 没有分配词库时，通过 user_word_progress 查询学生已学过的单词数
+      const { count: progressCount } = await supabaseAdmin
+        .from('user_word_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', authStore.user.id)
+      wordCount = progressCount || 0
       assignedCategories.value = []
-      wordCount = 0
     }
     
     assignedWordsCount.value = wordCount
@@ -1176,6 +1180,29 @@ const addSingleWord = async () => {
   }
 }
 
+// 处理导入按钮点击 - 支持自动继续执行
+const handleImportClick = async () => {
+  // 如果正在等待API Key处理中，不允许重复点击
+  if (waitingForApiKey.value) {
+    return
+  }
+  
+  // 如果弹窗已经显示，说明用户已经点击过一次，正在等待处理
+  if (showDeepseekPrompt.value) {
+    // 检查是否有API Key，如果有则继续验证，否则跳过
+    const apiKey = promptApiKey.value.trim()
+    if (apiKey) {
+      await saveApiKeyAndContinue()
+    } else {
+      await ignorePrompt()
+    }
+    return
+  }
+  
+  // 首次点击，执行正常流程
+  await submitWords()
+}
+
 const submitWords = async () => {
   if (parsedWords.value.length === 0) {
     alert('请先添加单词')
@@ -1578,5 +1605,19 @@ const cancelImport = () => {
 // 初始化
 onMounted(() => {
   loadUserAssignedCategories()
+})
+
+// 监听 DeepSeek 弹窗关闭事件，当弹窗关闭时自动继续执行
+watch(showDeepseekPrompt, (newVal, oldVal) => {
+  // 如果弹窗从显示变为隐藏，且之前正在等待 API Key
+  if (oldVal === true && newVal === false && waitingForApiKey.value) {
+    // 弹窗已关闭，检查是否有 API Key，如果有则继续验证，否则跳过
+    const apiKey = promptApiKey.value.trim()
+    if (apiKey) {
+      saveApiKeyAndContinue()
+    } else {
+      ignorePrompt()
+    }
+  }
 })
 </script>
