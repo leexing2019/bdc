@@ -23,7 +23,7 @@
     <!-- Stats -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-        <p class="text-3xl font-bold text-primary-600">{{ wordStore.proficiencyStats.new + wordStore.proficiencyStats.learning + wordStore.proficiencyStats.familiar + wordStore.proficiencyStats.mastered }}</p>
+        <p class="text-3xl font-bold text-primary-600">{{ totalWordsCount }}</p>
         <p class="text-sm text-gray-500">总单词数</p>
       </div>
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
@@ -177,7 +177,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -192,6 +192,7 @@ const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordLoading = ref(false)
 const customDailyLimit = ref(0) // 个人词库每日背诵数量
+const totalWordsCount = ref(0) // 总单词数
 
 const updateDailyLimitDecrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 20
@@ -232,8 +233,9 @@ const updateCustomDailyLimitIncrease = async () => {
 
 const updateCustomDailyLimit = async (newLimit) => {
   try {
+    // 使用supabaseAdmin确保数据一致性
     // 检查user_settings是否存在
-    const { data: existingSettings } = await supabase
+    const { data: existingSettings } = await supabaseAdmin
       .from('user_settings')
       .select('id')
       .eq('user_id', authStore.user.id)
@@ -241,17 +243,19 @@ const updateCustomDailyLimit = async (newLimit) => {
 
     if (existingSettings) {
       // 更新现有设置
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('user_settings')
         .update({ custom_daily_limit: newLimit })
         .eq('user_id', authStore.user.id)
       
       if (!error) {
         customDailyLimit.value = newLimit
+      } else {
+        console.error('Update error:', error)
       }
     } else {
       // 创建新设置
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('user_settings')
         .insert({
           user_id: authStore.user.id,
@@ -270,15 +274,49 @@ const updateCustomDailyLimit = async (newLimit) => {
 // 加载用户设置
 const loadUserSettings = async () => {
   try {
-    const { data: userSettings } = await supabase
+    // 使用supabaseAdmin确保数据一致性
+    const { data: userSettings } = await supabaseAdmin
       .from('user_settings')
-      .select('custom_daily_limit')
+      .select('category, custom_daily_limit')
       .eq('user_id', authStore.user.id)
       .maybeSingle()
     
     if (userSettings?.custom_daily_limit) {
       customDailyLimit.value = userSettings.custom_daily_limit
     }
+
+    // 计算总单词数（教师分配 + 个人词库）
+    const userCategory = userSettings?.category
+    
+    let assignedWordCount = 0
+    
+    if (userCategory && userCategory !== 'all') {
+      // 特定词库
+      const { count } = await supabaseAdmin
+        .from('words')
+        .select('*', { count: 'exact', head: true })
+        .eq('category', userCategory)
+      assignedWordCount = count || 0
+    } else if (userCategory === 'all') {
+      // 全部词库
+      const { count } = await supabaseAdmin
+        .from('words')
+        .select('*', { count: 'exact', head: true })
+        .neq('category', 'custom')
+      assignedWordCount = count || 0
+    }
+    
+    // 个人词库单词数
+    const { count: customCount } = await supabaseAdmin
+      .from('words')
+      .select('*', { count: 'exact', head: true })
+      .eq('category', 'custom')
+      .eq('created_by', authStore.user.id)
+    
+    const customWordCount = customCount || 0
+    
+    // 总单词数 = 教师分配 + 个人词库
+    totalWordsCount.value = assignedWordCount + customWordCount
   } catch (error) {
     console.error('Load user settings error:', error)
   }
