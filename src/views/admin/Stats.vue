@@ -6,6 +6,19 @@
       <p class="text-gray-500 mt-1">查看用户学习数据和分析</p>
     </div>
 
+    <!-- 加载中状态 -->
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <svg class="w-12 h-12 mx-auto text-primary-500 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-gray-500">加载中...</p>
+      </div>
+    </div>
+
+    <!-- 实际内容 -->
+    <template v-else>
     <!-- Overview Stats -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white rounded-xl p-4 shadow-sm">
@@ -38,7 +51,19 @@
 
       <!-- Proficiency Distribution -->
       <div class="bg-white rounded-xl p-6 shadow-sm">
-        <h3 class="font-semibold text-gray-800 mb-4">词汇掌握分布</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-800">词汇掌握分布</h3>
+          <select
+            v-model="selectedStudent"
+            @change="fetchProficiencyData"
+            class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          >
+            <option value="">全部学生</option>
+            <option v-for="student in students" :key="student.id" :value="student.id">
+              {{ student.username }}
+            </option>
+          </select>
+        </div>
         <div class="h-48">
           <canvas ref="proficiencyChartCanvas"></canvas>
         </div>
@@ -83,11 +108,12 @@
 
       <div v-if="recentLogs.length === 0" class="text-center py-12">
         <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 14a2 012 2v2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         <p class="text-gray-500">暂无学习记录</p>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -105,15 +131,38 @@ const stats = ref({
   avgMastered: 0
 })
 
+const loading = ref(true)
 const recentLogs = ref([])
 const weeklyChartCanvas = ref(null)
 const proficiencyChartCanvas = ref(null)
+const students = ref([])
+const selectedStudent = ref('')
 
 let weeklyChart = null
 let proficiencyChart = null
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN')
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toLocaleString('zh-CN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 获取学生列表
+const fetchStudents = async () => {
+  const { data } = await supabase
+    .from('users')
+    .select('id, username')
+    .eq('role', 'student')
+    .eq('is_active', true)
+    .order('username')
+  
+  students.value = data || []
 }
 
 const fetchStats = async () => {
@@ -217,9 +266,16 @@ const fetchWeeklyData = async () => {
 }
 
 const fetchProficiencyData = async () => {
-  const { data: progress } = await supabase
+  let query = supabase
     .from('user_word_progress')
     .select('proficiency')
+  
+  // 如果选择了特定学生，只查询该学生的学习进度
+  if (selectedStudent.value) {
+    query = query.eq('user_id', selectedStudent.value)
+  }
+  
+  const { data: progress } = await query
 
   const distribution = {
     new: 0,
@@ -269,10 +325,20 @@ const fetchProficiencyData = async () => {
 }
 
 onMounted(async () => {
-  await fetchStats()
-  await fetchRecentLogs()
-  await nextTick()
-  await fetchWeeklyData()
-  await fetchProficiencyData()
+  try {
+    await fetchStudents()
+    await fetchStats()
+    await fetchRecentLogs()
+    await fetchWeeklyData()
+    await fetchProficiencyData()
+  } finally {
+    // 先设置loading为false，显示内容区域
+    loading.value = false
+    // 等待DOM更新完成后，再初始化图表
+    await nextTick()
+    // 重新渲染图表（因为canvas在loading=false时才显示）
+    await fetchWeeklyData()
+    await fetchProficiencyData()
+  }
 })
 </script>

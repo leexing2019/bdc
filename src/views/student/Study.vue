@@ -423,8 +423,19 @@
         <div class="text-center">
           <p class="text-sm text-gray-500 mb-4">请填写空白处的单词</p>
           
+          <!-- Loading State -->
+          <div v-if="clozeLoading" class="bg-gray-50 rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-center">
+              <svg class="animate-spin h-6 w-6 text-primary-600 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-gray-500">加载例句中...</span>
+            </div>
+          </div>
+          
           <!-- Cloze Sentence -->
-          <div class="bg-gray-50 rounded-xl p-6 mb-6">
+          <div v-else class="bg-gray-50 rounded-xl p-6 mb-6">
             <p class="text-lg text-gray-800 leading-relaxed">
               {{ clozeSentence }}
             </p>
@@ -438,7 +449,7 @@
             @keyup.enter="checkCloze"
             class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-center text-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none mb-4"
             placeholder="请填写单词"
-            :disabled="clozeResult !== null"
+            :disabled="clozeResult !== null || clozeLoading"
           />
           
           <!-- Result Feedback -->
@@ -462,7 +473,7 @@
           <button
             v-if="clozeResult === null"
             @click="checkCloze"
-            :disabled="isTransitioning"
+            :disabled="isTransitioning || clozeLoading"
             class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             提交
@@ -470,7 +481,7 @@
           <button
             v-if="clozeResult === null"
             @click="skipCloze"
-            :disabled="isTransitioning"
+            :disabled="isTransitioning || clozeLoading"
             class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition ml-3 disabled:opacity-50"
           >
             不确定
@@ -504,8 +515,16 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useWordStore } from '@/stores/words'
+import { useAuthStore } from '@/stores/auth'
+import { supabase } from '@/lib/supabase'
 
 const wordStore = useWordStore()
+const authStore = useAuthStore()
+
+// 学习时长跟踪
+const studyStartTime = ref(null) // 学习开始时间（包含预习）
+const sessionNewWords = ref(0) // 本轮学习的新词数
+const sessionReviewedWords = ref(0) // 本轮学习的复习词数
 
 // Preview mode states
 const isPreviewMode = ref(true)
@@ -589,6 +608,7 @@ const clozeAnswer = ref('')
 const clozeResult = ref(null)
 const clozeExample = ref('')
 const clozeTargetForm = ref('') // 例句中使用的正确变形形式
+const clozeLoading = ref(false) // 例句加载状态
 
 // Fetch example sentence from Dictionary API
 const fetchClozeExample = async (word) => {
@@ -634,29 +654,38 @@ const loadClozeExample = async () => {
   const word = currentWord.value?.spelling
   if (!word) return
   
-  // Reset target form
+  // Set loading state
+  clozeLoading.value = true
+  clozeExample.value = ''
   clozeTargetForm.value = ''
   
-  // First try database example
-  if (currentWord.value?.example_sentence) {
-    clozeExample.value = currentWord.value.example_sentence
-    // 尝试从数据库例句中提取变形
-    const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
-    const match = currentWord.value.example_sentence.match(regex)
-    clozeTargetForm.value = match ? match[0] : ''
-    return
+  try {
+    // First try database example
+    if (currentWord.value?.example_sentence) {
+      clozeExample.value = currentWord.value.example_sentence
+      // 尝试从数据库例句中提取变形
+      const regex = new RegExp(`\\b${word}\\w*\\b`, 'gi')
+      const match = currentWord.value.example_sentence.match(regex)
+      clozeTargetForm.value = match ? match[0] : ''
+      clozeLoading.value = false
+      return
+    }
+    
+    // Then try Dictionary API
+    const result = await fetchClozeExample(word)
+    if (result.example) {
+      clozeExample.value = result.example
+      clozeTargetForm.value = result.targetForm
+      clozeLoading.value = false
+      return
+    }
+    
+    // Fall back to blank
+    clozeExample.value = ''
+    clozeLoading.value = false
+  } catch (e) {
+    clozeLoading.value = false
   }
-  
-  // Then try Dictionary API
-  const result = await fetchClozeExample(word)
-  if (result.example) {
-    clozeExample.value = result.example
-    clozeTargetForm.value = result.targetForm
-    return
-  }
-  
-  // Fall back to blank
-  clozeExample.value = ''
 }
 
 const currentWord = computed(() => wordStore.todayWords[currentIndex.value])
@@ -1009,11 +1038,19 @@ const nextWord = async () => {
   
   await wordStore.submitReview(quality)
   
+  // 记录是新词还是复习
+  if (currentWord.value?.isNew) {
+    sessionNewWords.value++
+  } else {
+    sessionReviewedWords.value++
+  }
+  
   resetState()
   currentIndex.value++
   
-  // 检查是否完成，如果完成则不继续选择模式
+  // 检查是否完成，如果完成则记录学习时长
   if (currentIndex.value >= wordStore.todayWords.length) {
+    await recordStudyDuration()
     isSessionCompleted.value = true
     isTransitioning.value = false
     return
@@ -1050,7 +1087,59 @@ const continueStudy = async () => {
   isSessionCompleted.value = false
   // 重置统计
   sessionStats.value = { total: 0, correct: 0, wrong: 0, hint: 0 }
+  // 重置学习时长跟踪
+  studyStartTime.value = Date.now()
+  sessionNewWords.value = 0
+  sessionReviewedWords.value = 0
   randomMode()
+}
+
+// 记录学习时长到数据库
+const recordStudyDuration = async () => {
+  if (!studyStartTime.value || !authStore.user) return
+  
+  const endTime = Date.now()
+  const durationMinutes = Math.round((endTime - studyStartTime.value) / 60000)
+  
+  if (durationMinutes < 1) return // 忽略小于1分钟的学习
+  
+  const today = new Date().toISOString().split('T')[0]
+  
+  try {
+    // 检查今天是否已有记录
+    const { data: existingLog } = await supabase
+      .from('study_logs')
+      .select('*')
+      .eq('user_id', authStore.user.id)
+      .eq('date', today)
+      .maybeSingle()
+    
+    if (existingLog) {
+      // 更新现有记录，累加时长
+      const newDuration = (existingLog.duration_minutes || 0) + durationMinutes
+      await supabase
+        .from('study_logs')
+        .update({ 
+          duration_minutes: newDuration,
+          new_words_learned: (existingLog.new_words_learned || 0) + sessionNewWords.value,
+          words_reviewed: (existingLog.words_reviewed || 0) + sessionReviewedWords.value
+        })
+        .eq('id', existingLog.id)
+    } else {
+      // 创建新记录
+      await supabase
+        .from('study_logs')
+        .insert({
+          user_id: authStore.user.id,
+          date: today,
+          new_words_learned: sessionNewWords.value,
+          words_reviewed: sessionReviewedWords.value,
+          duration_minutes: durationMinutes
+        })
+    }
+  } catch (error) {
+    console.error('记录学习时长失败:', error)
+  }
 }
 
 // Watch for word changes and load cloze example when in cloze mode
@@ -1081,5 +1170,9 @@ onMounted(async () => {
   previewIndex.value = 0
   // Initial random mode for later
   randomMode()
+  // 开始学习时长计时
+  studyStartTime.value = Date.now()
+  sessionNewWords.value = 0
+  sessionReviewedWords.value = 0
 })
 </script>

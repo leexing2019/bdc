@@ -8,8 +8,19 @@
       </div>
     </div>
 
+    <!-- 加载中状态 -->
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <svg class="w-12 h-12 mx-auto text-primary-500 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-gray-500">加载中...</p>
+      </div>
+    </div>
+
     <!-- Assign Task Card -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
+    <div v-else class="bg-white rounded-xl p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">布置学习任务</h2>
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -186,6 +197,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 const students = ref([])
 const userPlans = ref([])
+const loading = ref(true)
 const categories = ref([])
 const categoryCounts = ref({})
 const selectedUser = ref('')
@@ -228,7 +240,14 @@ const hideUserDropdown = () => {
 
 const formatDate = (date) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN')
+  const d = new Date(date)
+  return d.toLocaleString('zh-CN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const fetchCategories = async () => {
@@ -283,63 +302,68 @@ const fetchStudents = async () => {
 }
 
 const fetchUserPlans = async () => {
-  // Get users who have settings (assigned learning plans)
-  const { data: settingsWithUsers, error: settingsError } = await supabaseAdmin
-    .from('user_settings')
-    .select(`
-      user_id,
-      category,
-      users!inner(id, username, daily_limit, role, is_active)
-    `)
-  
-  if (settingsError) {
-    console.error('获取用户设置失败:', settingsError)
-    return
+  loading.value = true
+  try {
+    // Get users who have settings (assigned learning plans)
+    const { data: settingsWithUsers, error: settingsError } = await supabaseAdmin
+      .from('user_settings')
+      .select(`
+        user_id,
+        category,
+        users!inner(id, username, daily_limit, role, is_active)
+      `)
+    
+    if (settingsError) {
+      console.error('获取用户设置失败:', settingsError)
+      return
+    }
+
+    if (!settingsWithUsers || settingsWithUsers.length === 0) {
+      userPlans.value = []
+      return
+    }
+
+    const plans = []
+
+    for (const setting of settingsWithUsers) {
+      const user = setting.users
+      // Skip if user not found or not active
+      if (!user || user.role !== 'student' || !user.is_active) continue
+
+      // Get word progress
+      const { data: progress } = await supabaseAdmin
+        .from('user_word_progress')
+        .select('proficiency')
+        .eq('user_id', user.id)
+
+      const totalWords = progress?.length || 0
+      const masteredWords = progress?.filter(p => p.proficiency >= 5).length || 0
+      const masteredRate = totalWords > 0 ? Math.round((masteredWords / totalWords) * 100) : 0
+
+      // Get last study date
+      const { data: lastLog } = await supabaseAdmin
+        .from('study_logs')
+        .select('date')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      plans.push({
+        user_id: user.id,
+        username: user.username,
+        daily_limit: user.daily_limit,
+        category: setting.category,
+        total_words: totalWords,
+        mastered_rate: masteredRate,
+        last_study_date: lastLog?.date
+      })
+    }
+
+    userPlans.value = plans
+  } finally {
+    loading.value = false
   }
-
-  if (!settingsWithUsers || settingsWithUsers.length === 0) {
-    userPlans.value = []
-    return
-  }
-
-  const plans = []
-
-  for (const setting of settingsWithUsers) {
-    const user = setting.users
-    // Skip if user not found or not active
-    if (!user || user.role !== 'student' || !user.is_active) continue
-
-    // Get word progress
-    const { data: progress } = await supabaseAdmin
-      .from('user_word_progress')
-      .select('proficiency')
-      .eq('user_id', user.id)
-
-    const totalWords = progress?.length || 0
-    const masteredWords = progress?.filter(p => p.proficiency >= 5).length || 0
-    const masteredRate = totalWords > 0 ? Math.round((masteredWords / totalWords) * 100) : 0
-
-    // Get last study date
-    const { data: lastLog } = await supabaseAdmin
-      .from('study_logs')
-      .select('date')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    plans.push({
-      user_id: user.id,
-      username: user.username,
-      daily_limit: user.daily_limit,
-      category: setting.category,
-      total_words: totalWords,
-      mastered_rate: masteredRate,
-      last_study_date: lastLog?.date
-    })
-  }
-
-  userPlans.value = plans
 }
 
 const assignTask = async () => {

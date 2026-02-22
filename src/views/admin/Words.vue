@@ -1,5 +1,18 @@
 <template>
   <div class="space-y-6">
+    <!-- 加载中状态 -->
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <svg class="w-12 h-12 mx-auto text-primary-500 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-gray-500">加载中...</p>
+      </div>
+    </div>
+
+    <!-- 实际内容 -->
+    <template v-else>
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
@@ -641,6 +654,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -651,6 +665,7 @@ import * as XLSX from 'xlsx'
 import { fetchWordData, fetchWordDataBatch, testDeepSeekApi } from '@/utils/dictionaryService'
 
 const words = ref([])
+const loading = ref(true)
 const searchQuery = ref('')
 const filterCategory = ref('all')
 const showAddWordModal = ref(false)
@@ -1387,23 +1402,28 @@ const getCategoryClass = (category) => {
 }
 
 const fetchWords = async () => {
-  // 只获取公共词库，不显示学生自定义单词（custom分类）
-  const { data, error } = await supabase
-    .from('words')
-    .select('*')
-    .neq('category', 'custom')
-    .order('created_at', { ascending: false })
+  loading.value = true
+  try {
+    // 只获取公共词库，不显示学生自定义单词（custom分类）
+    const { data, error } = await supabase
+      .from('words')
+      .select('*')
+      .neq('category', 'custom')
+      .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('获取单词列表失败:', error)
-    return
+    if (error) {
+      console.error('获取单词列表失败:', error)
+      return
+    }
+    
+    if (data) {
+      words.value = data || []
+    }
+    // 加载完单词后也加载词库分类
+    await loadCategories()
+  } finally {
+    loading.value = false
   }
-  
-  if (data) {
-    words.value = data || []
-  }
-  // 加载完单词后也加载词库分类
-  await loadCategories()
 }
 
 const editWord = (word) => {

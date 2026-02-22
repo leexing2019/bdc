@@ -39,15 +39,26 @@
               <p class="text-xs text-gray-500">管理员</p>
             </div>
           </div>
-          <button
-            @click="handleLogout"
-            class="mt-4 w-full flex items-center justify-center px-4 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            退出登录
-          </button>
+          <div class="mt-3 flex space-x-2">
+            <button
+              @click="showPasswordModal = true"
+              class="flex-1 flex items-center justify-center px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              修改密码
+            </button>
+            <button
+              @click="handleLogout"
+              class="flex-1 flex items-center justify-center px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              退出
+            </button>
+          </div>
         </div>
       </div>
     </aside>
@@ -58,16 +69,100 @@
         <router-view />
       </div>
     </main>
+
+    <!-- 修改密码弹窗 -->
+    <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">修改密码</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+            <input
+              v-model="newPassword"
+              type="password"
+              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              placeholder="请输入新密码（至少6位）"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+            <input
+              v-model="confirmPassword"
+              type="password"
+              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              placeholder="请再次输入新密码"
+            />
+          </div>
+        </div>
+
+        <div class="mt-6 flex space-x-3">
+          <button
+            @click="showPasswordModal = false; newPassword = ''; confirmPassword = ''"
+            class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+          >
+            取消
+          </button>
+          <button
+            @click="changePassword"
+            :disabled="changingPassword"
+            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+          >
+            {{ changingPassword ? '修改中...' : '确认修改' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { h } from 'vue'
+import { h, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// 修改密码相关状态
+const showPasswordModal = ref(false)
+const newPassword = ref('')
+const confirmPassword = ref('')
+const changingPassword = ref(false)
+
+// 修改密码
+const changePassword = async () => {
+  if (!newPassword.value || newPassword.value.length < 6) {
+    alert('密码长度至少6位')
+    return
+  }
+  
+  if (newPassword.value !== confirmPassword.value) {
+    alert('两次输入的密码不一致')
+    return
+  }
+  
+  changingPassword.value = true
+  try {
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({ password: newPassword.value })
+      .eq('id', authStore.user.id)
+    
+    if (error) throw error
+    
+    alert('密码修改成功！')
+    showPasswordModal.value = false
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    alert('修改密码失败，请重试')
+  } finally {
+    changingPassword.value = false
+  }
+}
 
 // Icon components
 const UsersIcon = {

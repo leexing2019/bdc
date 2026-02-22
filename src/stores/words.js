@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { fetchWordData, generateExampleWithDeepSeek } from '@/utils/dictionaryService'
 
@@ -114,8 +114,8 @@ export const useWordStore = defineStore('words', () => {
     try {
       const userId = authStore.user.id
       
-      // 首先获取用户的词库设置
-      const { data: userSettings } = await supabase
+      // 首先获取用户的词库设置 - 使用admin客户端绕过RLS
+      const { data: userSettings } = await supabaseAdmin
         .from('user_settings')
         .select('category')
         .eq('user_id', userId)
@@ -177,6 +177,8 @@ export const useWordStore = defineStore('words', () => {
 
   async function fetchTodayWords() {
     if (!authStore.user) return
+    
+    loading.value = true
     
     try {
       // Skip refreshUser - we already have user data from login
@@ -267,6 +269,8 @@ export const useWordStore = defineStore('words', () => {
       currentWordIndex.value = 0
     } catch (error) {
       console.error('Fetch today words error:', error)
+    } finally {
+      loading.value = false
     }
   }
 

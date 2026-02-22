@@ -195,13 +195,15 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js'
 
 Chart.register(DoughnutController, ArcElement, Tooltip, Legend)
 
+const route = useRoute()
 const authStore = useAuthStore()
 const wordStore = useWordStore()
 const chartCanvas = ref(null)
@@ -215,8 +217,8 @@ const fetchUserLearningPlan = async () => {
   if (!authStore.user) return
   
   try {
-    // Get user settings for category
-    const { data: settings } = await supabase
+    // Get user settings for category - use admin client to bypass RLS
+    const { data: settings } = await supabaseAdmin
       .from('user_settings')
       .select('category')
       .eq('user_id', authStore.user.id)
@@ -225,7 +227,7 @@ const fetchUserLearningPlan = async () => {
     userCategory.value = settings?.category || 'all'
     
     // Get daily limit from user
-    const { data: userData } = await supabase
+    const { data: userData } = await supabaseAdmin
       .from('users')
       .select('daily_limit')
       .eq('id', authStore.user.id)
@@ -302,6 +304,17 @@ onMounted(async () => {
     wordStore.fetchTodayWords()
   ])
   setTimeout(createChart, 100)
+})
+
+// 监听路由变化，刷新数据（从背诵页面返回时）
+watch(() => route.path, async (newPath) => {
+  if (newPath === '/student/dashboard') {
+    await Promise.all([
+      fetchUserLearningPlan(),
+      wordStore.fetchTodayWords()
+    ])
+    setTimeout(createChart, 100)
+  }
 })
 
 watch(() => wordStore.proficiencyStats, () => {
