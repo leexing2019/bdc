@@ -259,14 +259,14 @@
           <button
             v-if="parsedWords.length > 0"
             @click="handleImportClick"
-            :disabled="submitting || waitingForApiKey || showDeepseekPrompt"
+            :disabled="submitting || waitingForApiKey || showDeepseekPrompt || validatingWords"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center min-w-[160px]"
           >
-            <svg v-if="submitting || waitingForApiKey || showDeepseekPrompt" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg v-if="submitting || waitingForApiKey || showDeepseekPrompt || validatingWords" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词')) }}
+            {{ getImportButtonText() }}
           </button>
         </div>
       </div>
@@ -731,6 +731,7 @@ const showDeepseekPromptModal = (words, currentIndex) => {
   currentPromptWordIndex.value = currentIndex
   promptApiKey.value = ''
   waitingForApiKey.value = true  // 显示按钮加载状态
+  validatingWords.value = true   // 确保按钮显示加载动画
   showDeepseekPrompt.value = true
 }
 
@@ -1181,6 +1182,23 @@ const addSingleWord = async () => {
   } finally {
     addingWord.value = false
   }
+}
+
+// 获取导入按钮文字
+const getImportButtonText = () => {
+  if (validatingWords.value) {
+    return '验证中...'
+  }
+  if (showDeepseekPrompt.value) {
+    return '请在弹窗中操作...'
+  }
+  if (waitingForApiKey.value) {
+    return '处理中...'
+  }
+  if (submitting.value) {
+    return '导入中...'
+  }
+  return '导入 ' + parsedWords.value.length + ' 个单词'
 }
 
 // 处理导入按钮点击 - 支持自动继续执行
