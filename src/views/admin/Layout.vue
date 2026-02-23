@@ -64,11 +64,29 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 lg:ml-64 min-h-screen">
+    <main class="flex-1 lg:ml-64 min-h-screen pb-20 lg:pb-0">
       <div class="p-4 lg:p-8">
         <router-view />
       </div>
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+      <div class="flex justify-around items-center h-16">
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="flex flex-col items-center justify-center flex-1 h-full"
+          :class="$route.path === item.path 
+            ? 'text-primary-600' 
+            : 'text-gray-500'"
+        >
+          <component :is="item.icon" class="w-6 h-6" />
+          <span class="text-xs mt-1">{{ item.name }}</span>
+        </router-link>
+      </div>
+    </nav>
 
     <!-- 修改密码弹窗 -->
     <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
