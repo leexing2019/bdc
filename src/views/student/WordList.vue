@@ -25,8 +25,8 @@
     </div>
 
     <!-- Search & Batch Actions -->
-    <div class="flex items-center space-x-4">
-      <div class="flex-1 relative">
+    <div class="space-y-3">
+      <div class="relative">
         <input
           v-model="searchQuery"
           type="text"
@@ -41,7 +41,7 @@
       <button
         v-if="activeTab === 'custom' && selectedWords.length > 0"
         @click="batchDeleteWords"
-        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center"
+        class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center"
       >
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -80,26 +80,26 @@
               class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 mt-1"
             />
           </div>
-          <div class="flex-1">
-            <div class="flex items-center space-x-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-2 flex-wrap">
               <h3 class="text-lg font-semibold text-gray-800">{{ word.spelling }}</h3>
               <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">{{ word.part_of_speech }}</span>
             </div>
-            <p class="text-gray-600 mt-1">{{ word.meaning }}</p>
-            <div class="flex items-center mt-2 space-x-4 text-xs text-gray-400">
-              <span v-if="word.phonetic">{{ word.phonetic }}</span>
-              <span class="px-2 py-0.5 rounded" :class="getProficiencyClass(word)">
+            <p class="text-gray-600 mt-1 truncate">{{ word.meaning }}</p>
+            <div class="flex items-center mt-2 flex-wrap gap-y-1 text-xs text-gray-400">
+              <span v-if="word.phonetic" class="mr-2">{{ word.phonetic }}</span>
+              <span class="px-2 py-0.5 rounded mr-2" :class="getProficiencyClass(word)">
                 {{ getProficiencyLabel(word) }}
               </span>
               <!-- 例句标签 -->
               <span 
                 v-if="word.example_sentence" 
-                class="text-blue-500 flex items-center"
+                class="text-blue-500 flex items-center mr-2"
               >
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                有例句
+                例句
               </span>
               <!-- 来源标签 -->
               <span 
@@ -107,37 +107,40 @@
                 class="px-2 py-0.5 rounded"
                 :class="word.source === 'institution' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
               >
-                {{ word.source === 'institution' ? '机构添加' : '自主添加' }}
+                {{ word.source === 'institution' ? '机构' : '自主' }}
               </span>
             </div>
           </div>
-          <button
-            @click.stop="playWord(word.spelling)"
-            class="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            </svg>
-          </button>
-          <!-- 编辑和删除按钮（仅自行导入的单词显示） -->
-          <button
-            v-if="word.source === 'custom'"
-            @click.stop="openEditModal(word)"
-            class="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-          <button
-            v-if="word.source === 'custom'"
-            @click.stop="deleteWord(word)"
-            class="p-2 hover:bg-red-100 rounded-lg transition"
-          >
-            <svg class="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <!-- 移动端：隐藏操作按钮，点击卡片后显示详情弹窗 -->
+          <div class="hidden lg:flex items-center space-x-1">
+            <button
+              @click.stop="playWord(word.spelling)"
+              class="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </button>
+            <!-- 编辑和删除按钮（仅自行导入的单词显示） -->
+            <button
+              v-if="word.source === 'custom'"
+              @click.stop="openEditModal(word)"
+              class="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              v-if="word.source === 'custom'"
+              @click.stop="deleteWord(word)"
+              class="p-2 hover:bg-red-100 rounded-lg transition"
+            >
+              <svg class="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
