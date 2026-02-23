@@ -351,24 +351,38 @@ const fetchUserLearningPlan = async () => {
 }
 
 const categoryDisplay = computed(() => {
-  // 如果有学习计划，显示计划数量
+  // 如果有多个学习计划，显示计划数量
   if (learningPlans.value.length > 1) {
     return `${learningPlans.value.length}个学习计划`
   }
-  // 如果没有学习计划且没有每日任务，显示暂无学习计划
+  
+  // 如果没有任何每日任务，显示暂无学习计划
   if (userDailyLimit.value === 0) {
     return '暂无学习计划'
   }
+  
+  // 存在学习计划的情况：
+  // 1. 有学习计划（learningPlans.length === 1）
+  // 2. 有教师分配的任务（teacherDailyLimit > 0）
+  // 3. 有个人词库任务（customDailyLimit > 0）
+  
+  // 如果有1个学习计划，显示该计划分类
   if (learningPlans.value.length === 1) {
     return getCategoryLabel(learningPlans.value[0].category)
   }
-  if (!userCategory.value || userCategory.value === 'all' || userCategory.value === '') {
-    return '暂无学习计划'
+  
+  // 如果有教师分配的任务（userCategory存在且不是'all'或空）
+  if (userCategory.value && userCategory.value !== 'all' && userCategory.value !== '') {
+    return userCategory.value
   }
-  if (userCategory.value === 'multiple') {
-    return '多计划学习'
+  
+  // 如果有个人词库任务
+  if (customDailyLimit.value > 0) {
+    return '个人词库'
   }
-  return userCategory.value
+  
+  // 其他情况
+  return '学习计划'
 })
 
 // 分类标签映射
