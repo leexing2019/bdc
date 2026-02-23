@@ -132,9 +132,9 @@ export const useWordStore = defineStore('words', () => {
       
       const userCategory = userSettings?.category
       
-      // 查询1：获取公共词库单词
+      // 查询1：获取公共词库单词 - 使用supabaseAdmin确保查询不受RLS影响
       // 只有当用户有特定词库分配时才加载（不是'all'也不是null）
-      let commonQuery = supabase
+      let commonQuery = supabaseAdmin
         .from('words')
         .select('*')
         .neq('category', 'custom')
@@ -145,8 +145,8 @@ export const useWordStore = defineStore('words', () => {
       if (userCategory && userCategory !== 'all' && userCategory !== null) {
         commonQuery = commonQuery.eq('category', userCategory)
       } else {
-        // 没有分配具体词库时，只返回空数组
-        commonQuery = commonQuery.eq('id', 0) // 返回空结果
+        // 没有分配具体词库时，只返回空结果（使用无效UUID）
+        commonQuery = commonQuery.eq('id', '00000000-0000-0000-0000-000000000000')
       }
       
       const { data: commonWords, error: commonError } = await commonQuery
