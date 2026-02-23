@@ -283,13 +283,13 @@ const checkTodayCompletion = async () => {
   }
 }
 
-// 获取用户学习计划
+// 获取用户学习计划 - 使用supabaseAdmin绕过RLS
 const fetchUserLearningPlan = async () => {
   if (!authStore.user) return
   
   try {
-    // 首先尝试获取新的学习计划表
-    const { data: plans, error: plansError } = await supabase
+    // 首先尝试获取新的学习计划表 - 使用supabaseAdmin绕过RLS
+    const { data: plans, error: plansError } = await supabaseAdmin
       .from('user_learning_plans')
       .select('*')
       .eq('user_id', authStore.user.id)

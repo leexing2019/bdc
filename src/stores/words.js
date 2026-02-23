@@ -224,8 +224,8 @@ export const useWordStore = defineStore('words', () => {
       }
       
       // 回退到旧逻辑：从user_settings获取category
-      // Get user's category preference and custom daily limit
-      const { data: userSettings } = await supabase
+      // Get user's category preference and custom daily limit - 使用supabaseAdmin绕过RLS
+      const { data: userSettings } = await supabaseAdmin
         .from('user_settings')
         .select('category, custom_daily_limit')
         .eq('user_id', authStore.user.id)
@@ -829,12 +829,12 @@ export const useWordStore = defineStore('words', () => {
 
   // ===== 学习计划管理功能 =====
   
-  // 获取用户的学习计划
+  // 获取用户的学习计划 - 使用supabaseAdmin绕过RLS
   async function fetchLearningPlans() {
     if (!authStore.user) return []
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_learning_plans')
         .select('*')
         .eq('user_id', authStore.user.id)
