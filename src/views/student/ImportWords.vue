@@ -259,14 +259,14 @@
           <button
             v-if="parsedWords.length > 0"
             @click="handleImportClick"
-            :disabled="submitting || waitingForApiKey"
+            :disabled="submitting || waitingForApiKey || showDeepseekPrompt"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center min-w-[160px]"
           >
-            <svg v-if="submitting || waitingForApiKey" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg v-if="submitting || waitingForApiKey || showDeepseekPrompt" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ waitingForApiKey ? '请在弹窗中操作...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词') }}
+            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (submitting ? '导入中...' : '导入 ' + parsedWords.length + ' 个单词')) }}
           </button>
         </div>
       </div>
@@ -1206,7 +1206,7 @@ const submitWords = async () => {
     return
   }
 
-  // 先验证单词
+  // 先验证单词 - 设置等待状态
   validatingWords.value = true
   pendingWords.value = parsedWords.value
   
@@ -1225,11 +1225,13 @@ const submitWords = async () => {
     if (exampleFetchFailed) {
       // 弹出DeepSeek API提示，保持loading状态
       showDeepseekPromptModal(parsedWords.value, 0)
-      // 注意：这里不设置 validatingWords.value = false，让按钮保持加载状态
+      // 保持 waitingForApiKey 为 true，按钮保持禁用状态
+      // 注意：这里不返回，继续保持等待状态
       return
     }
     
     // 正常验证
+    validatingWords.value = true
     const results = await validateWordsList(parsedWords.value)
     wordValidationResults.value = results
     
@@ -1250,6 +1252,7 @@ const submitWords = async () => {
     await doImport(parsedWords.value)
   } finally {
     validatingWords.value = false
+    waitingForApiKey.value = false
   }
 }
 

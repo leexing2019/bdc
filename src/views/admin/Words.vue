@@ -399,14 +399,14 @@
           </button>
           <button
             @click="importWordsToDb"
-            :disabled="importing || validatingWords || !importWords.length"
-            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center"
+            :disabled="importing || validatingWords || !importWords.length || waitingForApiKey || showDeepseekPrompt"
+            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center min-w-[160px]"
           >
-            <svg v-if="importing || validatingWords" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg v-if="importing || validatingWords || waitingForApiKey || showDeepseekPrompt" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ validatingWords ? '验证中...' : importing ? '导入中...' : '确认导入' }}
+            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (validatingWords ? '验证中...' : importing ? '导入中...' : '确认导入 ' + importWords.length + ' 个单词')) }}
           </button>
         </div>
       </div>
@@ -466,14 +466,14 @@
           </button>
           <button
             @click="createCategory"
-            :disabled="!newCategory.trim() || importing"
+            :disabled="!newCategory.trim() || importing || creatingCategory || waitingForApiKey || showDeepseekPrompt"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center"
           >
-            <svg v-if="importing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg v-if="importing || creatingCategory || waitingForApiKey || showDeepseekPrompt" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ importing ? '创建中...' : '创建词库' }}
+            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (creatingCategory ? '创建中...' : (importing ? '导入中...' : '创建词库'))) }}
           </button>
         </div>
       </div>
@@ -518,6 +518,56 @@
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             确认重命名
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DeepSeek API 提示弹窗 -->
+    <div v-if="showDeepseekPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">💡 提升导入体验</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          为提升例句获取成功率，建议配置 DeepSeek API Key。配置后系统可以为单词自动生成英文例句，帮助更好地学习。
+        </p>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">DeepSeek API Key</label>
+          <input
+            v-model="promptApiKey"
+            type="password"
+            placeholder="请输入 API Key（可选）"
+            class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            @keyup.enter="closeDeepseekPromptAndImport"
+          />
+          <p class="text-xs text-gray-400 mt-1">
+            获取方式：访问 <a href="https://platform.deepseek.com" target="_blank" class="text-primary-600 hover:underline">DeepSeek Platform</a> 注册并获取 API Key
+          </p>
+        </div>
+        
+        <div class="mb-4">
+          <label class="flex items-center text-sm text-gray-600">
+            <input
+              v-model="noMorePrompt"
+              type="checkbox"
+              class="mr-2 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            不再提示
+          </label>
+        </div>
+        
+        <div class="flex space-x-3">
+          <button
+            @click="skipDeepseekPrompt"
+            class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+          >
+            跳过
+          </button>
+          <button
+            @click="closeDeepseekPromptAndImport"
+            class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          >
+            {{ promptApiKey ? '保存并继续' : '继续导入' }}
           </button>
         </div>
       </div>
@@ -593,9 +643,14 @@
                   <div v-if="editingWordIndex === index" class="flex space-x-1">
                     <button
                       @click="saveAndRevalidateWord(index)"
-                      class="text-green-600 hover:text-green-800 text-xs font-medium"
+                      :disabled="validatingSingleWord"
+                      class="text-green-600 hover:text-green-800 text-xs font-medium disabled:opacity-50 flex items-center"
                     >
-                      验证
+                      <svg v-if="validatingSingleWord" class="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {{ validatingSingleWord ? '验证中' : '验证' }}
                     </button>
                     <button
                       @click="cancelEditWord"
@@ -711,6 +766,7 @@ const partOfSpeechOptions = [
 
 // 拼写验证相关
 const validatingWords = ref(false)
+const validatingSingleWord = ref(false) // 单个单词验证中的状态
 const wordValidationResults = ref([])
 const showValidationModal = ref(false)
 const pendingImportWords = ref([]) // 待导入的单词列表（验证通过后）
@@ -723,6 +779,14 @@ const targetCategoryForImport = ref(null) // 新建词库时导入的目标词�
 // DeepSeek API Key
 const deepseekApiKey = ref(localStorage.getItem('deepseek_api_key') || '')
 const testingApi = ref(false)
+
+// DeepSeek API 提示弹窗相关
+const showDeepseekPrompt = ref(false)
+const promptApiKey = ref('')
+const noMorePrompt = ref(localStorage.getItem('smartmemo_no_deepseek_prompt') === 'true')
+const waitingForApiKey = ref(false)
+const pendingWords = ref([])
+const creatingCategory = ref(false) // 新建词库按钮的等待状态
 
 // 保存 DeepSeek API Key 并测试连接
 const saveDeepseekApiKey = async () => {
@@ -754,6 +818,97 @@ const saveDeepseekApiKey = async () => {
     alert('测试失败，请重试')
   } finally {
     testingApi.value = false
+  }
+}
+
+// 关闭DeepSeek API提示弹窗并继续导入
+const closeDeepseekPromptAndImport = async () => {
+  const apiKey = promptApiKey.value.trim()
+  
+  if (apiKey) {
+    // 保存用户输入的API Key
+    localStorage.setItem('deepseek_api_key', apiKey)
+    deepseekApiKey.value = apiKey
+  }
+  
+  // 关闭弹窗
+  showDeepseekPrompt.value = false
+  promptApiKey.value = ''
+  
+  // 如果用户选择不再提醒
+  if (noMorePrompt.value) {
+    localStorage.setItem('smartmemo_no_deepseek_prompt', 'true')
+  }
+  
+  // 重置新建词库按钮状态
+  creatingCategory.value = false
+  
+  // 继续执行导入，检查是否有待处理单词
+  if (pendingWords.value.length > 0) {
+    // 新建词库情况：pendingWords已有内容
+    await doCategoryImportWithValidation()
+  } else {
+    // 批量导入情况：使用importWords
+    await doImportWithValidation()
+  }
+}
+
+// 跳过DeepSeek API继续导入
+const skipDeepseekPrompt = async () => {
+  showDeepseekPrompt.value = false
+  promptApiKey.value = ''
+  
+  // 重置新建词库按钮状态
+  creatingCategory.value = false
+  
+  // 继续执行导入，检查是否有待处理单词
+  if (pendingWords.value.length > 0) {
+    // 新建词库情况
+    await doCategoryImportWithValidation()
+  } else {
+    // 批量导入情况
+    await doImportWithValidation()
+  }
+}
+
+// 新建词库时的导入验证和导入
+const doCategoryImportWithValidation = async () => {
+  const categoryName = targetCategoryForImport.value || newCategory.value
+  
+  validatingWords.value = true
+  
+  try {
+    // 验证所有单词
+    console.log('新建词库：开始验证单词，共', pendingWords.value.length, '个')
+    const results = await validateWordsList(pendingWords.value, categoryName)
+    wordValidationResults.value = results
+    
+    // 统计有效和无效单词
+    const validCount = results.filter(w => w.valid).length
+    const invalidCount = results.filter(w => !w.valid).length
+    
+    console.log('验证完成：有效', validCount, '个，无效', invalidCount, '个')
+    
+    if (invalidCount > 0) {
+      // 显示验证结果弹窗，让用户确认
+      showValidationModal.value = true
+      setTimeout(() => {
+        scrollToFirstInvalid()
+      }, 300)
+      alert(`验证完成！发现 ${invalidCount} 个问题单词，请检查确认后再导入。`)
+    } else {
+      // 所有单词都有效，直接导入到新词库
+      console.log('所有单词验证通过，直接导入到新词库:', categoryName)
+      await importWordsToDbWithValidation(results, categoryName)
+    }
+  } catch (error) {
+    console.error('验证单词失败:', error)
+    alert('验证失败: ' + error.message + '\n将直接导入所有单词。')
+    await importWordsToDbWithValidation(pendingWords.value, categoryName)
+  } finally {
+    validatingWords.value = false
+    waitingForApiKey.value = false
+    pendingWords.value = []
   }
 }
 
@@ -1093,6 +1248,9 @@ const saveAndRevalidateWord = async (index) => {
     return
   }
   
+  // 设置验证中状态
+  validatingSingleWord.value = true
+  
   // 重新验证单词
   const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
   
@@ -1163,6 +1321,8 @@ const saveAndRevalidateWord = async (index) => {
   } catch (error) {
     console.error('验证单词失败:', error)
     alert('验证失败: ' + error.message)
+  } finally {
+    validatingSingleWord.value = false
   }
 }
 
@@ -1454,6 +1614,12 @@ const closeWordModal = () => {
 
 const fetchWordInfo = async () => {
   if (!wordForm.value.spelling.trim()) return
+  
+  // 检查是否选择了词性
+  if (!wordForm.value.part_of_speech) {
+    alert('请先选择词性，以便获取对应词性的例句')
+    return
+  }
   
   fetchingWord.value = true
   try {
@@ -1814,6 +1980,25 @@ const openImportModal = () => {
 }
 
 const importWordsToDb = async () => {
+  // 检查是否需要弹出API提示（没有API Key且没有选择不再提醒）
+  const hasApiKey = !!deepseekApiKey.value || !!localStorage.getItem('deepseek_api_key')
+  const noPrompt = noMorePrompt.value
+  
+  // 如果没有API Key且没有选择不再提醒，弹出DeepSeek API提示
+  if (!hasApiKey && !noPrompt) {
+    // 保存待导入的单词列表
+    pendingWords.value = importWords.value
+    waitingForApiKey.value = true
+    showDeepseekPrompt.value = true
+    return
+  }
+  
+  // 继续执行导入流程
+  await doImportWithValidation()
+}
+
+// 执行导入验证和导入
+const doImportWithValidation = async () => {
   // 先进行拼写验证
   validatingWords.value = true
   
@@ -1850,6 +2035,7 @@ const importWordsToDb = async () => {
     await importWordsToDbWithValidation(importWords.value)
   } finally {
     validatingWords.value = false
+    waitingForApiKey.value = false
   }
 }
 
@@ -1869,9 +2055,25 @@ const createCategory = async () => {
   }
   
   importing.value = true
+  creatingCategory.value = true
   
-  // 如果有导入的单词，先进行验证
+  // 如果有导入的单词，先检查是否需要弹出API提示
   if (importWords.value.length > 0) {
+    const hasApiKey = !!deepseekApiKey.value || !!localStorage.getItem('deepseek_api_key')
+    const noPrompt = noMorePrompt.value
+    
+    // 如果没有API Key且没有选择不再提醒，弹出DeepSeek API提示
+    if (!hasApiKey && !noPrompt) {
+      // 保存待导入的单词列表
+      pendingWords.value = importWords.value
+      targetCategoryForImport.value = categoryName
+      waitingForApiKey.value = true
+      showDeepseekPrompt.value = true
+      // 保持按钮等待状态
+      return
+    }
+    
+    // 继续执行验证和导入
     validatingWords.value = true
     
     try {
@@ -1911,6 +2113,7 @@ const createCategory = async () => {
       await importWordsToDbWithValidation(importWords.value, categoryName)
     } finally {
       validatingWords.value = false
+      creatingCategory.value = false
     }
   } else {
     // 没有导入单词，只创建空词库
@@ -1931,6 +2134,7 @@ const createCategory = async () => {
       alert('创建失败: ' + (error.message || JSON.stringify(error)))
     } finally {
       importing.value = false
+      creatingCategory.value = false
     }
     return
   }
@@ -1950,6 +2154,7 @@ const createCategory = async () => {
   newCategory.value = ''
   importWords.value = []
   importing.value = false
+  creatingCategory.value = false
   alert('词库创建成功！')
 }
 
