@@ -52,6 +52,7 @@ export const useWordStore = defineStore('words', () => {
   
   const words = ref([])
   const userProgress = ref([])
+  const studyLogs = ref([]) // 学习记录
   const todayWords = ref([])
   const loading = ref(false)
   const currentWordIndex = ref(0)
@@ -88,20 +89,26 @@ export const useWordStore = defineStore('words', () => {
     const stats = []
     const today = new Date()
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
+    // 获取本周的起始日期（今天往前6天）
+    const weekStart = new Date(today)
+    weekStart.setDate(today.getDate() - 6)
+    // 重置为00:00:00
+    weekStart.setHours(0, 0, 0, 0)
+    
+    for (let i = 0; i < 7; i++) {
+      // 每次循环从weekStart创建新的Date对象
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + i)
       const dateStr = date.toISOString().split('T')[0]
       
-      const dayLog = userProgress.value.find(log => 
-        log.last_review_date === dateStr
-      )
+      // 从studyLogs中查找当天的记录
+      const dayLog = studyLogs.value.find(log => log.date === dateStr)
       
       stats.push({
         date: dateStr,
         day: ['日', '一', '二', '三', '四', '五', '六'][date.getDay()],
-        count: dayLog ? dayLog.words_reviewed : 0,
-        completed: dayLog && dayLog.words_reviewed > 0
+        count: dayLog ? (dayLog.new_words_learned || 0) + (dayLog.words_reviewed || 0) : 0,
+        completed: dayLog && (dayLog.new_words_learned > 0 || dayLog.words_reviewed > 0)
       })
     }
     
@@ -175,6 +182,18 @@ export const useWordStore = defineStore('words', () => {
 
       if (progressError) throw progressError
       userProgress.value = progressData || []
+      
+      // 获取学习记录（用于本周进度统计）
+      const { data: logsData, error: logsError } = await supabase
+        .from('study_logs')
+        .select('*')
+        .eq('user_id', authStore.user.id)
+        .order('date', { ascending: false })
+        .limit(30)
+      
+      if (!logsError && logsData) {
+        studyLogs.value = logsData
+      }
     } catch (error) {
       console.error('Fetch words error:', error)
     } finally {
