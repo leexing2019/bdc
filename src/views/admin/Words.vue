@@ -831,9 +831,10 @@ const closeDeepseekPromptAndImport = async () => {
     deepseekApiKey.value = apiKey
   }
   
-  // 关闭弹窗
+  // 关闭弹窗，设置importing为true保持按钮禁用状态
   showDeepseekPrompt.value = false
   promptApiKey.value = ''
+  importing.value = true
   
   // 如果用户选择不再提醒
   if (noMorePrompt.value) {
@@ -857,6 +858,7 @@ const closeDeepseekPromptAndImport = async () => {
 const skipDeepseekPrompt = async () => {
   showDeepseekPrompt.value = false
   promptApiKey.value = ''
+  importing.value = true
   
   // 重置新建词库按钮状态
   creatingCategory.value = false
@@ -909,6 +911,7 @@ const doCategoryImportWithValidation = async () => {
     validatingWords.value = false
     waitingForApiKey.value = false
     pendingWords.value = []
+    importing.value = false
   }
 }
 
@@ -2036,6 +2039,7 @@ const doImportWithValidation = async () => {
   } finally {
     validatingWords.value = false
     waitingForApiKey.value = false
+    importing.value = false
   }
 }
 

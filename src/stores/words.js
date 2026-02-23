@@ -214,7 +214,8 @@ export const useWordStore = defineStore('words', () => {
       // 如果有设置学习计划，使用新逻辑
       if (plans && plans.length > 0) {
         const planWords = await fetchTodayWordsByPlans(plans)
-        if (planWords) {
+        // 检查是否有学习任务（数组长度 > 0）
+        if (planWords && planWords.length > 0) {
           todayWords.value = planWords
           currentWordIndex.value = 0
           loading.value = false
@@ -953,12 +954,12 @@ export const useWordStore = defineStore('words', () => {
     const resultWords = []
     let totalDailyLimit = 0
     
-    // 获取所有需要学习的分类
+    // 获取所有需要学习的分类（只获取active状态且daily_limit > 0的计划）
     const activePlans = plans.filter(p => p.status === 'active' && p.daily_limit > 0)
     const categories = activePlans.map(p => p.category)
     totalDailyLimit = activePlans.reduce((sum, p) => sum + p.daily_limit, 0)
     
-    // 如果没有设置学习计划，回退到旧逻辑
+    // 如果没有设置学习计划或每日限制为0，直接返回空数组（不获取复习单词）
     if (categories.length === 0 || totalDailyLimit === 0) {
       return [] // 没有学习任务，返回空数组
     }

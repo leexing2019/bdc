@@ -627,7 +627,7 @@ const saveUser = async () => {
           username: userForm.value.username,
           password: userForm.value.password,
           role: 'student',
-          daily_limit: 20
+          daily_limit: 0
         })
     }
     

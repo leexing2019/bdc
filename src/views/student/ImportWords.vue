@@ -756,9 +756,10 @@ const saveApiKeyAndContinue = async () => {
     localStorage.setItem('smartmemo_deepseek_key', apiKey)
     deepseekApiKey.value = apiKey
     
-    // 关闭弹窗，继续验证
+    // 关闭弹窗，设置提交状态为true保持按钮禁用，直到验证完成
     showDeepseekPrompt.value = false
     waitingForApiKey.value = false
+    submitting.value = true
     
     // 继续处理剩余单词
     await continueValidationWithApi()
@@ -768,6 +769,7 @@ const saveApiKeyAndContinue = async () => {
     alert('保存失败，请重试')
   } finally {
     testingApi.value = false
+    submitting.value = false
   }
 }
 
@@ -792,6 +794,7 @@ const continueValidationWithApi = async () => {
     await doImport(pendingWords.value)
   } finally {
     validatingWords.value = false
+    submitting.value = false
   }
 }
 
@@ -802,6 +805,8 @@ const ignorePrompt = async () => {
   }
   showDeepseekPrompt.value = false
   waitingForApiKey.value = false
+  // 设置提交状态为true保持按钮禁用，直到验证完成
+  submitting.value = true
   // 不使用API Key继续验证
   await continueValidationWithoutApi()
 }
@@ -826,6 +831,7 @@ const continueValidationWithoutApi = async () => {
     await doImport(pendingWords.value)
   } finally {
     validatingWords.value = false
+    submitting.value = false
   }
 }
 
@@ -1253,6 +1259,7 @@ const submitWords = async () => {
   } finally {
     validatingWords.value = false
     waitingForApiKey.value = false
+    submitting.value = false
   }
 }
 
