@@ -626,15 +626,14 @@ export const useWordStore = defineStore('words', () => {
 
     for (const word of wordsData) {
       try {
-        // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）
-        // 同时检查拼写和词性，相同拼写+相同词性视为重复
+        // 检查单词是否已存在于当前用户的个人词库中（只检查custom分类）- 使用supabaseAdmin绕过RLS
         const trimmedSpelling = word.spelling.trim().toLowerCase()
         const partOfSpeech = (word.partOfSpeech || '').trim()
         
         // 词性匹配逻辑：
         // 1. 如果用户提供了词性，匹配相同词性（包括空字符串）
         // 2. 如果用户没有提供词性，匹配词性为空或null的记录
-        let query = supabase
+        let query = supabaseAdmin
           .from('words')
           .select('id, spelling, part_of_speech')
           .eq('category', 'custom')
@@ -712,7 +711,7 @@ export const useWordStore = defineStore('words', () => {
           }
         }
 
-        // 添加单词（包括音标、例句和音频）
+        // 添加单词（包括音标、例句和音频）- 使用supabaseAdmin绕过RLS
         console.log('批量插入单词数据:', {
           spelling: word.spelling.trim(),
           part_of_speech: word.partOfSpeech || '',
@@ -724,7 +723,7 @@ export const useWordStore = defineStore('words', () => {
           created_by: authStore.user.id
         })
         
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
           .from('words')
           .insert({
             spelling: word.spelling.trim(),
