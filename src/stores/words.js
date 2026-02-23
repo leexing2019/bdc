@@ -153,8 +153,8 @@ export const useWordStore = defineStore('words', () => {
 
       if (commonError) throw commonError
       
-      // 查询2：获取用户自己添加的单词（custom分类且created_by = 当前用户）
-      const { data: customWords, error: customError } = await supabase
+      // 查询2：获取用户自己添加的单词（custom分类且created_by = 当前用户）- 使用supabaseAdmin绕过RLS
+      const { data: customWords, error: customError } = await supabaseAdmin
         .from('words')
         .select('*')
         .eq('category', 'custom')
