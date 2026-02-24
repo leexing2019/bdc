@@ -12,7 +12,7 @@
     </div>
 
     <!-- 实际内容 -->
-    <template v-else>
+    <div v-else>
     <!-- Header -->
     <div class="space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -712,8 +712,7 @@
         </div>
       </div>
     </div>
-    </template>
-  </div>
+    </div>
 </template>
 
 <script setup>
