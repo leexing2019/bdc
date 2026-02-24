@@ -16,7 +16,7 @@
         </div>
         <span 
           class="px-3 py-1 text-sm rounded-full"
-          :class="baiduConfig configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+          :class="baiduConfig.configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
         >
           {{ baiduConfig.configured ? '已配置' : '未配置' }}
         </span>
