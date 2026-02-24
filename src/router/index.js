@@ -76,10 +76,16 @@ const routes = [
         path: 'stats',
         name: 'AdminStats',
         component: () => import('@/views/admin/Stats.vue')
+      },
+      {
+        path: 'settings',
+        name: 'AdminSettings',
+        component: () => import('@/views/admin/Settings.vue')
       }
     ]
   }
 ]
+
 
 const router = createRouter({
   history: createWebHistory(),

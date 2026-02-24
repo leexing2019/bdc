@@ -99,6 +99,7 @@
         <input
           v-model="newWord.spelling"
           @blur="newWord.spelling && validateWordSpellingOnly(newWord.spelling)"
+          @input="onSpellingInput"
           placeholder="英文"
           class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
           :class="{'border-orange-500': validationError}"
@@ -112,11 +113,23 @@
             {{ item.label }}
           </option>
         </select>
-        <input
-          v-model="newWord.meaning"
-          placeholder="中文"
-          class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        />
+        <div class="flex-1 relative">
+          <input
+            v-model="newWord.meaning"
+            placeholder="中文"
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          />
+          <!-- 翻译按钮 -->
+          <button
+            v-if="newWord.spelling && newWord.partOfSpeech"
+            @click="handleTranslate"
+            :disabled="translating"
+            class="absolute right-1 top-1 bottom-1 px-2 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-50"
+            title="使用百度翻译获取中文释义"
+          >
+            {{ translating ? '翻译中...' : '翻译' }}
+          </button>
+        </div>
         <button
           @click="addSingleWord"
           :disabled="addingWord || !newWord.spelling || !newWord.meaning"
@@ -137,7 +150,12 @@
         <p class="text-xs text-gray-500 mt-1">{{ currentExample.translation }}</p>
       </div>
       
-      <p class="text-xs text-gray-400 mt-2">输入单词后会自动验证拼写，选择词性后会获取对应例句</p>
+      <!-- 百度翻译状态提示 -->
+      <div v-if="!baiduConfig.available && newWord.spelling" class="mt-2 text-xs text-orange-600">
+        提示：百度翻译API未配置，请手动输入中文释义或联系管理员配置
+      </div>
+      
+      <p class="text-xs text-gray-400 mt-2">输入英文后选择词性，可点击"翻译"按钮获取中文释义（需管理员配置百度翻译API）</p>
     </div>
 
     <!-- Format Instructions -->
@@ -556,6 +574,7 @@ import { useAuthStore } from '@/stores/auth'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { fetchWordData, testDeepSeekApi } from '@/utils/dictionaryService'
+import { translateToChinese, checkBaiduTranslationAvailable } from '@/utils/baiduTranslate'
 
 const wordStore = useWordStore()
 const authStore = useAuthStore()
@@ -615,8 +634,19 @@ const customWordCount = ref(0)
 // 统计数据加载状态
 const statsLoading = ref(true)
 
-// 词性选项
-const partOfSpeechOptions = [
+// ========== 百度翻译相关状态 ==========
+const baiduConfig = ref({ available: false, appid: '', secret: '', message: '检查中...' })
+const translating = ref(false)
+
+// 词性映射：Dictionary API返回的词性 -> 用户友好的词性
+const dictionaryPOSMapping = {
+  'noun': 'n.', 'verb': 'v.', 'transitive verb': 'vt.', 'intransitive verb': 'vi.',
+  'adjective': 'adj.', 'adverb': 'adv.', 'pronoun': 'pron.', 'numeral': 'num.',
+  'conjunction': 'conj.', 'preposition': 'prep.', 'interjection': 'int.'
+}
+
+// 默认词性选项
+const defaultPartOfSpeechOptions = [
   { value: '', label: '请选择' },
   { value: 'n.', label: '名词 (n.)' },
   { value: 'v.', label: '动词 (v.)' },
@@ -630,6 +660,129 @@ const partOfSpeechOptions = [
   { value: 'prep.', label: '介词 (prep.)' },
   { value: 'int.', label: '感叹词 (int.)' }
 ]
+
+// 动态词性选项
+const dynamicPartOfSpeechOptions = ref([])
+
+// 计算属性：当前使用的词性选项
+const partOfSpeechOptions = computed(() => {
+  if (dynamicPartOfSpeechOptions.value.length > 0) {
+    return [{ value: '', label: '请选择' }, ...dynamicPartOfSpeechOptions.value]
+  }
+  return defaultPartOfSpeechOptions
+})
+
+// 加载百度翻译配置
+const loadBaiduConfig = async () => {
+  const result = await checkBaiduTranslationAvailable()
+  baiduConfig.value = {
+    available: result.available,
+    appid: result.appid || '',
+    secret: result.secret || '',
+    message: result.message
+  }
+}
+
+// 从Dictionary API获取词性列表
+const fetchPartOfSpeechList = async (spelling) => {
+  if (!spelling || !spelling.trim()) {
+    dynamicPartOfSpeechOptions.value = []
+    return
+  }
+  
+  const cleanWord = spelling.trim().toLowerCase()
+  
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`)
+    
+    if (!response.ok) {
+      dynamicPartOfSpeechOptions.value = []
+      return
+    }
+    
+    const data = await response.json()
+    if (!data || !data[0] || !data[0].meanings) {
+      dynamicPartOfSpeechOptions.value = []
+      return
+    }
+    
+    // 提取所有词性并去重
+    const posSet = new Set()
+    for (const meaning of data[0].meanings) {
+      if (meaning.partOfSpeech) {
+        const mappedPOS = dictionaryPOSMapping[meaning.partOfSpeech.toLowerCase()]
+        if (mappedPOS) {
+          posSet.add(mappedPOS)
+        }
+      }
+    }
+    
+    // 转换为选项格式
+    const labelMap = {
+      'n.': '名词 (n.)', 'v.': '动词 (v.)', 'vt.': '及物动词 (vt.)',
+      'vi.': '不及物动词 (vi.)', 'adj.': '形容词 (adj.)', 'adv.': '副词 (adv.)',
+      'pron.': '代词 (pron.)', 'num.': '数词 (num.)', 'conj.': '连词 (conj.)',
+      'prep.': '介词 (prep.)', 'int.': '感叹词 (int.)'
+    }
+    
+    const posOptions = [...posSet].map(pos => ({
+      value: pos,
+      label: labelMap[pos] || pos
+    }))
+    
+    // 按固定顺序排序
+    const order = ['n.', 'v.', 'vt.', 'vi.', 'adj.', 'adv.', 'pron.', 'num.', 'conj.', 'prep.', 'int.']
+    posOptions.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value))
+    
+    dynamicPartOfSpeechOptions.value = posOptions
+  } catch (error) {
+    console.error('获取词性列表失败:', error)
+    dynamicPartOfSpeechOptions.value = []
+  }
+}
+
+// 英文输入时获取词性列表
+const onSpellingInput = async () => {
+  if (newWord.value.spelling && newWord.value.spelling.trim()) {
+    await fetchPartOfSpeechList(newWord.value.spelling)
+  } else {
+    dynamicPartOfSpeechOptions.value = []
+  }
+}
+
+// 处理翻译按钮点击
+const handleTranslate = async () => {
+  if (!newWord.value.spelling || !newWord.value.partOfSpeech) {
+    return
+  }
+  
+  if (!baiduConfig.value.available) {
+    alert('百度翻译API未配置，请联系管理员配置或在下方手动输入中文释义')
+    return
+  }
+  
+  translating.value = true
+  
+  try {
+    const result = await translateToChinese(newWord.value.spelling, baiduConfig.value.appid, baiduConfig.value.secret)
+    
+    if (result.success) {
+      newWord.value.meaning = result.translation
+    } else {
+      console.error('翻译失败:', result.error)
+      if (result.error && (result.error.includes('余额不足') || result.error.includes('频率') || result.error.includes('配额'))) {
+        alert('百度翻译API额度已用尽，请手动输入中文释义')
+      } else {
+        alert('翻译失败: ' + result.error)
+      }
+    }
+  } catch (error) {
+    console.error('翻译请求失败:', error)
+    alert('翻译请求失败，请手动输入中文释义')
+  } finally {
+    translating.value = false
+  }
+}
 
 // 加载用户分配的词库
 const loadUserAssignedCategories = async () => {
@@ -1166,6 +1319,7 @@ const addSingleWord = async () => {
       newWord.value = { spelling: '', partOfSpeech: '', meaning: '' }
       validationError.value = ''
       currentExample.value = null
+      dynamicPartOfSpeechOptions.value = []
       // 刷新单词列表和个人词库数量
       await wordStore.fetchWords()
       await loadUserAssignedCategories()
@@ -1404,7 +1558,7 @@ const doImport = async (wordsToImport) => {
   submitting.value = true
   duplicateWords.value = []
   invalidWords.value = []
-  successCount.value =0
+  successCount.value = 0
   
   try {
     const result = await wordStore.addCustomWordsBatch(wordsToImport)
@@ -1630,6 +1784,7 @@ const cancelImport = () => {
 // 初始化
 onMounted(() => {
   loadUserAssignedCategories()
+  loadBaiduConfig()
 })
 
 // 监听 DeepSeek 弹窗关闭事件，当弹窗关闭时自动继续执行

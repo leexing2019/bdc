@@ -721,6 +721,7 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { fetchWordData, fetchWordDataBatch, testDeepSeekApi } from '@/utils/dictionaryService'
+import { translateToChinese, checkBaiduTranslationAvailable } from '@/utils/baiduTranslate'
 
 const words = ref([])
 const loading = ref(true)
@@ -766,6 +767,54 @@ const partOfSpeechOptions = [
   { value: 'prep.', label: '介词 (prep.)' },
   { value: 'int.', label: '感叹词 (int.)' }
 ]
+
+const testVar = 1
+const baiduConfig = ref({ available: false })
+const translating = ref(false)
+
+const fetchPartOfSpeechList = async (spelling) => {
+  if (!spelling || !spelling.trim()) { dynamicPartOfSpeechOptions.value = []; return }
+  const cleanWord = spelling.trim().toLowerCase()
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`)
+    if (!response.ok) { dynamicPartOfSpeechOptions.value = []; return }
+    const data = await response.json()
+    if (!data || !data[0] || !data[0].meanings) { dynamicPartOfSpeechOptions.value = []; return }
+    const posSet = new Set()
+    for (const meaning of data[0].meanings) {
+      if (meaning.partOfSpeech) {
+        const mappedPOS = {'noun':'n.','verb':'v.','transitive verb':'vt.','intransitive verb':'vi.','adjective':'adj.','adverb':'adv.','pronoun':'pron.','numeral':'num.','conjunction':'conj.','preposition':'prep.','interjection':'int.'}[meaning.partOfSpeech.toLowerCase()]
+        if (mappedPOS) posSet.add(mappedPOS)
+      }
+    }
+    const labelMap = {'n.':'名词 (n.)','v.':'动词 (v.)','vt.':'及物动词 (vt.)','vi.':'不及物动词 (vi.)','adj.':'形容词 (adj.)','adv.':'副词 (adv.)','pron.':'代词 (pron.)','num.':'数词 (num.)','conj.':'连词 (conj.)','prep.':'介词 (prep.)','int.':'感叹词 (int.)'}
+    const posOptions = [...posSet].map(pos => ({value:pos,label:labelMap[pos]||pos}))
+    const order = ['n.','v.','vt.','vi.','adj.','adv.','pron.','num.','conj.','prep.','int.']
+    posOptions.sort((a,b) => order.indexOf(a.value) - order.indexOf(b.value))
+    dynamicPartOfSpeechOptions.value = posOptions
+  } catch (e) { console.error('获取词性列表失败:',e); dynamicPartOfSpeechOptions.value = [] }
+}
+
+const onSpellingInput = async () => {
+  if (wordForm.value.spelling && wordForm.value.spelling.trim()) await fetchPartOfSpeechList(wordForm.value.spelling)
+  else dynamicPartOfSpeechOptions.value = []
+}
+
+const handleTranslate = async () => {
+  if (!wordForm.value.spelling || !wordForm.value.part_of_speech) return
+  if (!baiduConfig.value.available) { alert('百度翻译API未配置'); return }
+  translating.value = true
+  try {
+    const result = await translateToChinese(wordForm.value.spelling, baiduConfig.value.appid, baiduConfig.value.secret)
+    if (result.success) wordForm.value.meaning = result.translation
+    else { console.error('翻译失败:',result.error); alert(result.error?.includes('余额')?'额度已用尽':'翻译失败') }
+  } catch (e) { console.error(e); alert('翻译失败') } finally { translating.value = false }
+}
+
+const loadBaiduConfig = async () => {
+  const r = await checkBaiduTranslationAvailable()
+  baiduConfig.value = { available: r.available, appid: r.appid||'', secret: r.secret||'' }
+}
 
 // 拼写验证相关
 const validatingWords = ref(false)
@@ -2283,7 +2332,10 @@ const batchUpdateExamples = async () => {
 
 onMounted(async () => {
   await fetchWords()
-  // 确保加载词库分类
+  // test admin edit
+  await loadCategories()
+  await loadBaiduConfig()
+})
   await loadCategories()
 })
 </script>
