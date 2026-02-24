@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-6">
-    <!-- 加载中状态 -->
+    <!-- 加载中状�?-->
     <div v-if="loading" class="flex items-center justify-center py-20">
       <div class="text-center">
         <svg class="w-12 h-12 mx-auto text-primary-500 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="mt-4 text-gray-500">加载中...</p>
+        <p class="mt-4 text-gray-500">加载�?..</p>
       </div>
     </div>
 
@@ -18,21 +18,21 @@
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-800">词库管理</h1>
-          <p class="text-gray-500 mt-1">管理系统词汇和批量导入</p>
+          <p class="text-gray-500 mt-1">管理系统词汇和批量导�?/p>
         </div>
         <!-- DeepSeek API Key 设置 - 移动端隐藏，点击按钮显示 -->
         <div class="hidden lg:flex items-center space-x-2">
           <input
             v-model="deepseekApiKey"
             type="password"
-            placeholder="DeepSeek API Key（可选，用于生成例句）"
+            placeholder="DeepSeek API Key（可选，用于生成例句�?
             class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
           <button
             @click="saveDeepseekApiKey"
             :disabled="testingApi"
             class="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition text-sm disabled:opacity-50"
-            :title="testingApi ? '测试中...' : '测试并保存API Key'"
+            :title="testingApi ? '测试�?..' : '测试并保存API Key'"
           >
             <svg v-if="testingApi" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -45,7 +45,7 @@
         </div>
       </div>
       
-      <!-- 操作按钮栏 - 移动端堆叠 -->
+      <!-- 操作按钮�?- 移动端堆�?-->
       <div class="flex flex-col sm:flex-row gap-2 sm:space-x-3">
         <button
           @click="downloadTemplate"
@@ -99,7 +99,7 @@
           <button
             @click.stop="renameCategory(cat)"
             class="p-1 text-gray-400 hover:text-blue-600"
-            title="重命名词库"
+            title="重命名词�?
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -168,7 +168,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ deleting ? '删除中...' : '删除选中 (' + selectedWords.length + ')' }}
+          {{ deleting ? '删除�?..' : '删除选中 (' + selectedWords.length + ')' }}
         </button>
       </div>
     </div>
@@ -188,7 +188,7 @@
                 />
               </th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">单词</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">词性</th>
+              <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">词�?/th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">释义</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">分类</th>
               <th class="text-right py-3 px-4 text-sm font-medium text-gray-500">操作</th>
@@ -252,13 +252,13 @@
                 v-model="wordForm.spelling"
                 type="text"
                 class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                placeholder="请输入英文单词"
+                placeholder="请输入英文单�?
               />
               <button
                 @click="fetchWordInfo"
                 :disabled="fetchingWord || !wordForm.spelling.trim()"
                 class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center"
-                title="自动获取释义和例句"
+                title="自动获取释义和例�?
               >
                 <svg v-if="fetchingWord" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -271,7 +271,7 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">词性</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">词�?/label>
             <select
               v-model="wordForm.part_of_speech"
               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
@@ -287,7 +287,7 @@
               v-model="wordForm.meaning"
               type="text"
               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="请输入中文释义"
+              placeholder="请输入中文释�?
             />
           </div>
           <div>
@@ -314,7 +314,7 @@
               v-model="wordForm.example_sentence"
               rows="2"
               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="请输入例句"
+              placeholder="请输入例�?
             ></textarea>
           </div>
         </div>
@@ -331,7 +331,7 @@
             :disabled="saving"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
-            {{ saving ? '保存中...' : '保存' }}
+            {{ saving ? '保存�?..' : '保存' }}
           </button>
         </div>
       </div>
@@ -372,13 +372,13 @@
         </div>
 
         <div v-if="importWords.length" class="mt-4">
-          <p class="text-sm text-gray-500 mb-2">已解析 {{ importWords.length }} 个单词</p>
+          <p class="text-sm text-gray-500 mb-2">已解�?{{ importWords.length }} 个单�?/p>
           <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
             <table class="w-full text-sm">
               <thead class="bg-gray-50">
                 <tr>
                   <th class="text-left py-2 px-3">单词</th>
-                  <th class="text-left py-2 px-3">词性</th>
+                  <th class="text-left py-2 px-3">词�?/th>
                   <th class="text-left py-2 px-3">释义</th>
                 </tr>
               </thead>
@@ -409,7 +409,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (validatingWords ? '验证中...' : importing ? '导入中...' : '确认导入 ' + importWords.length + ' 个单词')) }}
+            {{ showDeepseekPrompt ? '请在弹窗中操�?..' : (waitingForApiKey ? '处理�?..' : (validatingWords ? '验证�?..' : importing ? '导入�?..' : '确认导入 ' + importWords.length + ' 个单�?)) }}
           </button>
         </div>
       </div>
@@ -426,7 +426,7 @@
             <input
               v-model="newCategory"
               type="text"
-              placeholder="例如：考研词汇、雅思词汇"
+              placeholder="例如：考研词汇、雅思词�?
               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             />
           </div>
@@ -453,7 +453,7 @@
           </div>
 
           <div v-if="importWords.length" class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
-            <p class="text-sm text-gray-500 mb-2">已解析 {{ importWords.length }} 个单词</p>
+            <p class="text-sm text-gray-500 mb-2">已解�?{{ importWords.length }} 个单�?/p>
             <div class="text-xs text-gray-400">
               {{ importWords.slice(0, 5).map(w => w.spelling).join(', ') }}{{ importWords.length > 5 ? '...' : '' }}
             </div>
@@ -476,7 +476,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ showDeepseekPrompt ? '请在弹窗中操作...' : (waitingForApiKey ? '处理中...' : (creatingCategory ? '创建中...' : (importing ? '导入中...' : '创建词库'))) }}
+            {{ showDeepseekPrompt ? '请在弹窗中操�?..' : (waitingForApiKey ? '处理�?..' : (creatingCategory ? '创建�?..' : (importing ? '导入�?..' : '创建词库'))) }}
           </button>
         </div>
       </div>
@@ -485,7 +485,7 @@
     <!-- Rename Category Modal -->
     <div v-if="showRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl max-w-md w-full p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">重命名词库</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">重命名词�?/h3>
         
         <div class="space-y-4">
           <div>
@@ -498,7 +498,7 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">新词库名称</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">新词库名�?/label>
             <input
               v-model="newCategoryName"
               type="text"
@@ -520,7 +520,7 @@
             :disabled="!newCategoryName.trim() || newCategoryName === renamingCategory"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
-            确认重命名
+            确认重命�?
           </button>
         </div>
       </div>
@@ -531,7 +531,7 @@
       <div class="bg-white rounded-2xl max-w-md w-full p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-2">💡 提升导入体验</h3>
         <p class="text-sm text-gray-600 mb-4">
-          为提升例句获取成功率，建议配置 DeepSeek API Key。配置后系统可以为单词自动生成英文例句，帮助更好地学习。
+          为提升例句获取成功率，建议配�?DeepSeek API Key。配置后系统可以为单词自动生成英文例句，帮助更好地学习�?
         </p>
         
         <div class="mb-4">
@@ -539,12 +539,12 @@
           <input
             v-model="promptApiKey"
             type="password"
-            placeholder="请输入 API Key（可选）"
+            placeholder="请输�?API Key（可选）"
             class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             @keyup.enter="closeDeepseekPromptAndImport"
           />
           <p class="text-xs text-gray-400 mt-1">
-            获取方式：访问 <a href="https://platform.deepseek.com" target="_blank" class="text-primary-600 hover:underline">DeepSeek Platform</a> 注册并获取 API Key
+            获取方式：访�?<a href="https://platform.deepseek.com" target="_blank" class="text-primary-600 hover:underline">DeepSeek Platform</a> 注册并获�?API Key
           </p>
         </div>
         
@@ -570,7 +570,7 @@
             @click="closeDeepseekPromptAndImport"
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
-            {{ promptApiKey ? '保存并继续' : '继续导入' }}
+            {{ promptApiKey ? '保存并继�? : '继续导入' }}
           </button>
         </div>
       </div>
@@ -582,12 +582,12 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-2">
           ⚠️ 单词验证结果（共 {{ wordValidationResults.length }} 个）
         </h3>
-        <p class="text-sm text-gray-500 mb-4">无效单词可以点击"修改"按钮更正拼写，然后点击"验证"重新检查</p>
+        <p class="text-sm text-gray-500 mb-4">无效单词可以点击"修改"按钮更正拼写，然后点�?验证"重新检�?/p>
         
         <!-- 验证统计 -->
         <div class="flex space-x-4 mb-4 text-sm">
-          <span class="text-green-600">✓ 有效: {{ wordValidationResults.filter(w => w.valid).length }} 个</span>
-          <span class="text-red-600">✗ 无效: {{ wordValidationResults.filter(w => !w.valid).length }} 个</span>
+          <span class="text-green-600">�?有效: {{ wordValidationResults.filter(w => w.valid).length }} �?/span>
+          <span class="text-red-600">�?无效: {{ wordValidationResults.filter(w => !w.valid).length }} �?/span>
         </div>
         
         <!-- 问题单词列表 -->
@@ -596,9 +596,9 @@
             <thead class="bg-gray-50 sticky top-0">
               <tr>
                 <th class="text-left py-2 px-3">单词</th>
-                <th class="text-left py-2 px-3">词性</th>
+                <th class="text-left py-2 px-3">词�?/th>
                 <th class="text-left py-2 px-3">中文释义</th>
-                <th class="text-left py-2 px-3">问题/状态</th>
+                <th class="text-left py-2 px-3">问题/状�?/th>
                 <th class="text-left py-2 px-3">操作</th>
               </tr>
             </thead>
@@ -624,7 +624,7 @@
                   {{ word.spelling }}
                 </td>
                 
-                <!-- 词性（只读） -->
+                <!-- 词性（只读�?-->
                 <td class="py-2 px-3 text-gray-600">
                   {{ word.part_of_speech || '-' }}
                 </td>
@@ -634,9 +634,9 @@
                   {{ word.meaning || '-' }}
                 </td>
                 
-                <!-- 问题/状态 -->
+                <!-- 问题/状�?-->
                 <td class="py-2 px-3">
-                  <span v-if="word.valid" class="text-green-600">✓ 有效</span>
+                  <span v-if="word.valid" class="text-green-600">�?有效</span>
                   <span v-else class="text-red-600">{{ word.reason || word.warning || '无效' }}</span>
                 </td>
                 
@@ -653,7 +653,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      {{ validatingSingleWord ? '验证中' : '验证' }}
+                      {{ validatingSingleWord ? '验证�? : '验证' }}
                     </button>
                     <button
                       @click="cancelEditWord"
@@ -662,7 +662,7 @@
                       取消
                     </button>
                   </div>
-                  <!-- 非编辑模式 -->
+                  <!-- 非编辑模�?-->
                   <div v-else class="flex space-x-1">
                     <button
                       v-if="!word.valid"
@@ -678,7 +678,7 @@
                     >
                       移除
                     </button>
-                    <span v-if="word.valid" class="text-green-600 text-xs">✓ 有效</span>
+                    <span v-if="word.valid" class="text-green-600 text-xs">�?有效</span>
                   </div>
                 </td>
               </tr>
@@ -697,7 +697,7 @@
             v-if="wordValidationResults.some(w => !w.valid)"
             @click="forceImportAll"
             class="px-4 py-2 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition"
-            title="忽略验证问题，导入全部单词"
+            title="忽略验证问题，导入全部单�?
           >
             强制导入全部 ({{ wordValidationResults.length }})
           </button>
@@ -706,8 +706,8 @@
             class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
             {{ wordValidationResults.every(w => w.valid) 
-                ? '全部导入 (' + wordValidationResults.length + ' 个)' 
-                : '仅导入有效 (' + wordValidationResults.filter(w => w.valid).length + ' 个)' }}
+                ? '全部导入 (' + wordValidationResults.length + ' �?' 
+                : '仅导入有�?(' + wordValidationResults.filter(w => w.valid).length + ' �?' }}
           </button>
         </div>
       </div>
@@ -738,7 +738,7 @@ const saving = ref(false)
 const fetchingWord = ref(false)
 const updatingExamples = ref(false)
 const importing = ref(false)
-const deleting = ref(false) // 批量删除中状态
+const deleting = ref(false) // 批量删除中状�?
 const importWords = ref([])
 const importCategory = ref('CET-4')
 const fileInput = ref(null)
@@ -758,14 +758,14 @@ const partOfSpeechOptions = [
   { value: 'n.', label: '名词 (n.)' },
   { value: 'v.', label: '动词 (v.)' },
   { value: 'vt.', label: '及物动词 (vt.)' },
-  { value: 'vi.', label: '不及物动词 (vi.)' },
-  { value: 'adj.', label: '形容词 (adj.)' },
+  { value: 'vi.', label: '不及物动�?(vi.)' },
+  { value: 'adj.', label: '形容�?(adj.)' },
   { value: 'adv.', label: '副词 (adv.)' },
   { value: 'pron.', label: '代词 (pron.)' },
   { value: 'num.', label: '数词 (num.)' },
   { value: 'conj.', label: '连词 (conj.)' },
   { value: 'prep.', label: '介词 (prep.)' },
-  { value: 'int.', label: '感叹词 (int.)' }
+  { value: 'int.', label: '感叹�?(int.)' }
 ]
 
 const testVar = 1
@@ -787,12 +787,12 @@ const fetchPartOfSpeechList = async (spelling) => {
         if (mappedPOS) posSet.add(mappedPOS)
       }
     }
-    const labelMap = {'n.':'名词 (n.)','v.':'动词 (v.)','vt.':'及物动词 (vt.)','vi.':'不及物动词 (vi.)','adj.':'形容词 (adj.)','adv.':'副词 (adv.)','pron.':'代词 (pron.)','num.':'数词 (num.)','conj.':'连词 (conj.)','prep.':'介词 (prep.)','int.':'感叹词 (int.)'}
+    const labelMap = {'n.':'名词 (n.)','v.':'动词 (v.)','vt.':'及物动词 (vt.)','vi.':'不及物动�?(vi.)','adj.':'形容�?(adj.)','adv.':'副词 (adv.)','pron.':'代词 (pron.)','num.':'数词 (num.)','conj.':'连词 (conj.)','prep.':'介词 (prep.)','int.':'感叹�?(int.)'}
     const posOptions = [...posSet].map(pos => ({value:pos,label:labelMap[pos]||pos}))
     const order = ['n.','v.','vt.','vi.','adj.','adv.','pron.','num.','conj.','prep.','int.']
     posOptions.sort((a,b) => order.indexOf(a.value) - order.indexOf(b.value))
     dynamicPartOfSpeechOptions.value = posOptions
-  } catch (e) { console.error('获取词性列表失败:',e); dynamicPartOfSpeechOptions.value = [] }
+  } catch (e) { console.error('获取词性列表失�?',e); dynamicPartOfSpeechOptions.value = [] }
 }
 
 const onSpellingInput = async () => {
@@ -802,12 +802,12 @@ const onSpellingInput = async () => {
 
 const handleTranslate = async () => {
   if (!wordForm.value.spelling || !wordForm.value.part_of_speech) return
-  if (!baiduConfig.value.available) { alert('百度翻译API未配置'); return }
+  if (!baiduConfig.value.available) { alert('百度翻译API未配�?); return }
   translating.value = true
   try {
     const result = await translateToChinese(wordForm.value.spelling, baiduConfig.value.appid, baiduConfig.value.secret)
     if (result.success) wordForm.value.meaning = result.translation
-    else { console.error('翻译失败:',result.error); alert(result.error?.includes('余额')?'额度已用尽':'翻译失败') }
+    else { console.error('翻译失败:',result.error); alert(result.error?.includes('余额')?'额度已用�?:'翻译失败') }
   } catch (e) { console.error(e); alert('翻译失败') } finally { translating.value = false }
 }
 
@@ -818,14 +818,14 @@ const loadBaiduConfig = async () => {
 
 // 拼写验证相关
 const validatingWords = ref(false)
-const validatingSingleWord = ref(false) // 单个单词验证中的状态
+const validatingSingleWord = ref(false) // 单个单词验证中的状�?
 const wordValidationResults = ref([])
 const showValidationModal = ref(false)
 const pendingImportWords = ref([]) // 待导入的单词列表（验证通过后）
-const editingWordIndex = ref(-1) // 当前编辑的单词索引
+const editingWordIndex = ref(-1) // 当前编辑的单词索�?
 const editingWordText = ref('') // 编辑中的单词文本
 const validationListRef = ref(null) // 验证列表容器引用
-const wordRefs = ref({}) // 单词行引用
+const wordRefs = ref({}) // 单词行引�?
 const targetCategoryForImport = ref(null) // 新建词库时导入的目标词库名称
 
 // DeepSeek API Key
@@ -838,14 +838,14 @@ const promptApiKey = ref('')
 const noMorePrompt = ref(localStorage.getItem('smartmemo_no_deepseek_prompt') === 'true')
 const waitingForApiKey = ref(false)
 const pendingWords = ref([])
-const creatingCategory = ref(false) // 新建词库按钮的等待状态
+const creatingCategory = ref(false) // 新建词库按钮的等待状�?
 
-// 保存 DeepSeek API Key 并测试连接
+// 保存 DeepSeek API Key 并测试连�?
 const saveDeepseekApiKey = async () => {
   const apiKey = deepseekApiKey.value.trim()
   
   if (!apiKey) {
-    alert('请输入 API Key')
+    alert('请输�?API Key')
     return
   }
   
@@ -855,15 +855,15 @@ const saveDeepseekApiKey = async () => {
     const result = await testDeepSeekApi(apiKey)
     
     if (result.success) {
-      // 保存到本地存储
+      // 保存到本地存�?
       localStorage.setItem('deepseek_api_key', apiKey)
-      // 同时更新ref，确保立即生效
+      // 同时更新ref，确保立即生�?
       deepseekApiKey.value = apiKey
-      alert(`✅ ${result.message}\n\n测试回复: "${result.example}"`)
+      alert(`�?${result.message}\n\n测试回复: "${result.example}"`)
     } else {
-      // 清除无效的 API Key
+      // 清除无效�?API Key
       localStorage.removeItem('deepseek_api_key')
-      alert(`❌ ${result.message}`)
+      alert(`�?${result.message}`)
     }
   } catch (error) {
     console.error('测试 API 失败:', error)
@@ -873,7 +873,7 @@ const saveDeepseekApiKey = async () => {
   }
 }
 
-// 关闭DeepSeek API提示弹窗并继续导入
+// 关闭DeepSeek API提示弹窗并继续导�?
 const closeDeepseekPromptAndImport = async () => {
   const apiKey = promptApiKey.value.trim()
   
@@ -883,7 +883,7 @@ const closeDeepseekPromptAndImport = async () => {
     deepseekApiKey.value = apiKey
   }
   
-  // 关闭弹窗，设置importing为true保持按钮禁用状态
+  // 关闭弹窗，设置importing为true保持按钮禁用状�?
   showDeepseekPrompt.value = false
   promptApiKey.value = ''
   importing.value = true
@@ -893,10 +893,10 @@ const closeDeepseekPromptAndImport = async () => {
     localStorage.setItem('smartmemo_no_deepseek_prompt', 'true')
   }
   
-  // 重置新建词库按钮状态
+  // 重置新建词库按钮状�?
   creatingCategory.value = false
   
-  // 继续执行导入，检查是否有待处理单词
+  // 继续执行导入，检查是否有待处理单�?
   if (pendingWords.value.length > 0) {
     // 新建词库情况：pendingWords已有内容
     await doCategoryImportWithValidation()
@@ -912,10 +912,10 @@ const skipDeepseekPrompt = async () => {
   promptApiKey.value = ''
   importing.value = true
   
-  // 重置新建词库按钮状态
+  // 重置新建词库按钮状�?
   creatingCategory.value = false
   
-  // 继续执行导入，检查是否有待处理单词
+  // 继续执行导入，检查是否有待处理单�?
   if (pendingWords.value.length > 0) {
     // 新建词库情况
     await doCategoryImportWithValidation()
@@ -925,23 +925,23 @@ const skipDeepseekPrompt = async () => {
   }
 }
 
-// 新建词库时的导入验证和导入
+// 新建词库时的导入验证和导�?
 const doCategoryImportWithValidation = async () => {
   const categoryName = targetCategoryForImport.value || newCategory.value
   
   validatingWords.value = true
   
   try {
-    // 验证所有单词
-    console.log('新建词库：开始验证单词，共', pendingWords.value.length, '个')
+    // 验证所有单�?
+    console.log('新建词库：开始验证单词，�?, pendingWords.value.length, '�?)
     const results = await validateWordsList(pendingWords.value, categoryName)
     wordValidationResults.value = results
     
-    // 统计有效和无效单词
+    // 统计有效和无效单�?
     const validCount = results.filter(w => w.valid).length
     const invalidCount = results.filter(w => !w.valid).length
     
-    console.log('验证完成：有效', validCount, '个，无效', invalidCount, '个')
+    console.log('验证完成：有�?, validCount, '个，无效', invalidCount, '�?)
     
     if (invalidCount > 0) {
       // 显示验证结果弹窗，让用户确认
@@ -949,15 +949,15 @@ const doCategoryImportWithValidation = async () => {
       setTimeout(() => {
         scrollToFirstInvalid()
       }, 300)
-      alert(`验证完成！发现 ${invalidCount} 个问题单词，请检查确认后再导入。`)
+      alert(`验证完成！发�?${invalidCount} 个问题单词，请检查确认后再导入。`)
     } else {
-      // 所有单词都有效，直接导入到新词库
-      console.log('所有单词验证通过，直接导入到新词库:', categoryName)
+      // 所有单词都有效，直接导入到新词�?
+      console.log('所有单词验证通过，直接导入到新词�?', categoryName)
       await importWordsToDbWithValidation(results, categoryName)
     }
   } catch (error) {
     console.error('验证单词失败:', error)
-    alert('验证失败: ' + error.message + '\n将直接导入所有单词。')
+    alert('验证失败: ' + error.message + '\n将直接导入所有单词�?)
     await importWordsToDbWithValidation(pendingWords.value, categoryName)
   } finally {
     validatingWords.value = false
@@ -967,7 +967,7 @@ const doCategoryImportWithValidation = async () => {
   }
 }
 
-// 常见短语动词列表（允许包含空格的词组）
+// 常见短语动词列表（允许包含空格的词组�?
 const commonPhrasalVerbs = [
   'allude to', 'amount to', 'appeal to', 'apply to', 'approve of',
   'argue with', 'arise from', 'ask for', 'attend to', 'attribute to',
@@ -1028,7 +1028,7 @@ const commonPhrasalVerbs = [
   'yield to'
 ]
 
-// 验证单词拼写（使用 Dictionary API）
+// 验证单词拼写（使�?Dictionary API�?
 const validateWordSpelling = async (word) => {
   if (!word || !word.trim()) {
     return { valid: false, reason: '单词为空' }
@@ -1041,9 +1041,9 @@ const validateWordSpelling = async (word) => {
     return { valid: false, reason: '包含非法字符', original: word }
   }
   
-  // 检查是否有连续的特殊字符
+  // 检查是否有连续的特殊字�?
   if (/[-]{2,}/.test(cleanWord)) {
-    return { valid: false, reason: '包含连续连字符', original: word }
+    return { valid: false, reason: '包含连续连字�?, original: word }
   }
   
   // 检查是否以连字符开头或结尾
@@ -1053,7 +1053,7 @@ const validateWordSpelling = async (word) => {
   
   // 检查是否包含空格（可能是短语动词）
   if (cleanWord.includes(' ')) {
-    // 检查是否是常见的短语动词
+    // 检查是否是常见的短语动�?
     if (commonPhrasalVerbs.includes(cleanWord)) {
       return { valid: true, original: word, isPhrasalVerb: true, warning: '短语动词' }
     }
@@ -1063,13 +1063,13 @@ const validateWordSpelling = async (word) => {
     try {
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(mainVerb)}`)
       if (response.ok) {
-        return { valid: true, original: word, isPhrasalVerb: true, warning: '短语动词（未完全验证）' }
+        return { valid: true, original: word, isPhrasalVerb: true, warning: '短语动词（未完全验证�? }
       }
     } catch (e) {
       // API 调用失败，允许通过
     }
-    // 其他包含空格的词组，标记为需要确认
-    return { valid: true, original: word, warning: '包含空格，请确认是否为短语动词', needsConfirmation: true }
+    // 其他包含空格的词组，标记为需要确�?
+    return { valid: true, original: word, warning: '包含空格，请确认是否为短语动�?, needsConfirmation: true }
   }
   
   // 使用 Dictionary API 验证单词是否存在
@@ -1078,10 +1078,10 @@ const validateWordSpelling = async (word) => {
     const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
     
     if (!response.ok) {
-      // 单词不存在，返回可能的建议
+      // 单词不存在，返回可能的建�?
       return { 
         valid: false, 
-        reason: '字典中未找到该单词', 
+        reason: '字典中未找到该单�?, 
         original: word,
         suggestion: cleanWord
       }
@@ -1091,7 +1091,7 @@ const validateWordSpelling = async (word) => {
     if (!data || !data[0]) {
       return { 
         valid: false, 
-        reason: '字典中未找到该单词', 
+        reason: '字典中未找到该单�?, 
         original: word 
       }
     }
@@ -1099,7 +1099,7 @@ const validateWordSpelling = async (word) => {
     return { valid: true, original: word, phonetic: data[0].phonetic || null }
   } catch (error) {
     console.error('验证单词出错:', error)
-    // API 出错时不阻止导入，但标记为警告
+    // API 出错时不阻止导入，但标记为警�?
     return { valid: true, original: word, warning: '无法验证拼写' }
   }
 }
@@ -1116,12 +1116,12 @@ const validateWordsList = async (words, categoryForValidation = null) => {
     .select('spelling, part_of_speech')
     .eq('category', targetCategory)
   
-  // 使用 拼写|词性 作为唯一键，词性为空时视为同一词性
+  // 使用 拼写|词�?作为唯一键，词性为空时视为同一词�?
   const existingSpellings = new Set(
     (existingWords || []).map(w => `${w.spelling.toLowerCase()}|${(w.part_of_speech || '').toLowerCase()}`)
   )
   
-  alert(`开始验证 ${words.length} 个单词，请等待...`)
+  alert(`开始验�?${words.length} 个单词，请等�?..`)
   
   for (let i = 0; i < words.length; i++) {
     const word = words[i]
@@ -1140,9 +1140,9 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       continue
     }
     
-    // 检查是否有连续的特殊字符
+    // 检查是否有连续的特殊字�?
     if (/[-]{2,}/.test(cleanWord)) {
-      results.push({ ...word, valid: false, reason: '包含连续连字符' })
+      results.push({ ...word, valid: false, reason: '包含连续连字�? })
       continue
     }
     
@@ -1155,13 +1155,13 @@ const validateWordsList = async (words, categoryForValidation = null) => {
     // 检查是否已存在于词库中（同时检查拼写和词性）
     const wordKey = `${cleanWord}|${(word.part_of_speech || '').toLowerCase()}`
     if (existingSpellings.has(wordKey)) {
-      results.push({ ...word, valid: false, reason: '该词库中已存在' })
+      results.push({ ...word, valid: false, reason: '该词库中已存�? })
       continue
     }
     
     // 检查是否包含空格（可能是短语动词）
     if (cleanWord.includes(' ')) {
-      // 检查是否是常见的短语动词
+      // 检查是否是常见的短语动�?
       if (commonPhrasalVerbs.includes(cleanWord)) {
         results.push({ ...word, valid: true, phonetic: null, isPhrasalVerb: true })
         continue
@@ -1177,7 +1177,7 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       } catch (e) {
         // API 调用失败
       }
-      // 其他包含空格的词组，标记为有效但需要确认
+      // 其他包含空格的词组，标记为有效但需要确�?
       results.push({ ...word, valid: true, phonetic: null, warning: '包含空格（短语动词）' })
       continue
     }
@@ -1211,7 +1211,7 @@ const validateWordsList = async (words, categoryForValidation = null) => {
   
   const validCount = results.filter(w => w.valid).length
   const invalidCount = results.filter(w => !w.valid).length
-  alert(`验证完成！有效: ${validCount} 个，无效: ${invalidCount} 个`)
+  alert(`验证完成！有�? ${validCount} 个，无效: ${invalidCount} 个`)
   
   return results
 }
@@ -1233,7 +1233,7 @@ const cancelEditWord = () => {
   editingWordText.value = ''
 }
 
-// 滚动到第一个无效单词
+// 滚动到第一个无效单�?
 const scrollToFirstInvalid = () => {
   const firstInvalidIndex = wordValidationResults.value.findIndex(w => !w.valid)
   if (firstInvalidIndex !== -1) {
@@ -1252,16 +1252,16 @@ const scrollToWord = (index) => {
   }, 100)
 }
 
-// 滚动到下一个无效单词
+// 滚动到下一个无效单�?
 const scrollToNextInvalid = (currentIndex) => {
-  // 从当前索引之后查找下一个无效单词
+  // 从当前索引之后查找下一个无效单�?
   for (let i = currentIndex + 1; i < wordValidationResults.value.length; i++) {
     if (!wordValidationResults.value[i].valid) {
       scrollToWord(i)
       return
     }
   }
-  // 如果后面没有，从头开始查找
+  // 如果后面没有，从头开始查�?
   for (let i = 0; i < currentIndex; i++) {
     if (!wordValidationResults.value[i].valid) {
       scrollToWord(i)
@@ -1270,7 +1270,7 @@ const scrollToNextInvalid = (currentIndex) => {
   }
 }
 
-// 保存编辑并重新验证
+// 保存编辑并重新验�?
 const saveAndRevalidateWord = async (index) => {
   const newSpelling = editingWordText.value.trim()
   if (!newSpelling) {
@@ -1282,13 +1282,13 @@ const saveAndRevalidateWord = async (index) => {
   
   // 基本格式验证
   if (!/^[a-z\-]+$/.test(cleanWord)) {
-    alert('单词只允许包含字母和连字符')
+    alert('单词只允许包含字母和连字�?)
     return
   }
   
-  // 检查是否有连续的特殊字符
+  // 检查是否有连续的特殊字�?
   if (/[-]{2,}/.test(cleanWord)) {
-    alert('单词不能包含连续连字符')
+    alert('单词不能包含连续连字�?)
     return
   }
   
@@ -1303,7 +1303,7 @@ const saveAndRevalidateWord = async (index) => {
     return
   }
   
-  // 设置验证中状态
+  // 设置验证中状�?
   validatingSingleWord.value = true
   
   // 重新验证单词
@@ -1316,7 +1316,7 @@ const saveAndRevalidateWord = async (index) => {
     
     // 检查是否包含空格（可能是短语动词）
     if (cleanWord.includes(' ')) {
-      // 检查是否是常见的短语动词
+      // 检查是否是常见的短语动�?
       if (commonPhrasalVerbs.includes(cleanWord)) {
         isPhrasalVerb = true
       } else {
@@ -1356,21 +1356,21 @@ const saveAndRevalidateWord = async (index) => {
       isPhrasalVerb: isPhrasalVerb || undefined
     }
     
-    // 关闭编辑状态
+    // 关闭编辑状�?
     editingWordIndex.value = -1
     editingWordText.value = ''
     
-    // 提示结果并滚动到下一个无效单词
+    // 提示结果并滚动到下一个无效单�?
     if (!isValidWord) {
-      alert(`❌ 单词 "${newSpelling}" 验证失败：字典中未找到该单词`)
+      alert(`�?单词 "${newSpelling}" 验证失败：字典中未找到该单词`)
       // 保持在当前行继续修改
     } else if (isPhrasalVerb) {
-      alert(`✅ 单词 "${newSpelling}" 验证通过！（短语动词）`)
-      // 滚动到下一个无效单词
+      alert(`�?单词 "${newSpelling}" 验证通过！（短语动词）`)
+      // 滚动到下一个无效单�?
       scrollToNextInvalid(index)
     } else {
-      alert(`✅ 单词 "${newSpelling}" 验证通过！`)
-      // 滚动到下一个无效单词
+      alert(`�?单词 "${newSpelling}" 验证通过！`)
+      // 滚动到下一个无效单�?
       scrollToNextInvalid(index)
     }
   } catch (error) {
@@ -1401,7 +1401,7 @@ const confirmImport = async () => {
     const validWords = wordValidationResults.value.filter(w => w.valid)
     
     if (validWords.length === 0) {
-      alert('没有有效的单词可以导入')
+      alert('没有有效的单词可以导�?)
       return
     }
     
@@ -1409,12 +1409,12 @@ const confirmImport = async () => {
     // 执行导入
     await importWordsToDbWithValidation(validWords, targetCat)
   } else {
-    // 全部有效，导入全部
+    // 全部有效，导入全�?
     showValidationModal.value = false
     await importWordsToDbWithValidation(wordValidationResults.value, targetCat)
   }
   
-  // 如果是从新建词库导入的，导入完成后关闭新建词库弹窗
+  // 如果是从新建词库导入的，导入完成后关闭新建词库弹�?
   if (targetCat) {
     showCategoryModal.value = false
     newCategory.value = ''
@@ -1425,9 +1425,9 @@ const confirmImport = async () => {
   }
 }
 
-// 强制导入全部单词（包括验证失败的）
+// 强制导入全部单词（包括验证失败的�?
 const forceImportAll = async () => {
-  if (!confirm('确定要导入全部单词吗？包含拼写错误的单词可能会导致学习问题。')) {
+  if (!confirm('确定要导入全部单词吗？包含拼写错误的单词可能会导致学习问题�?)) {
     return
   }
   
@@ -1439,7 +1439,7 @@ const forceImportAll = async () => {
   // 执行导入全部单词
   await importWordsToDbWithValidation(wordValidationResults.value, targetCat)
   
-  // 如果是从新建词库导入的，导入完成后关闭新建词库弹窗
+  // 如果是从新建词库导入的，导入完成后关闭新建词库弹�?
   if (targetCat) {
     showCategoryModal.value = false
     newCategory.value = ''
@@ -1453,7 +1453,7 @@ const forceImportAll = async () => {
 // 带验证的导入函数
 const importWordsToDbWithValidation = async (wordsToImport, targetCategory = null) => {
   importing.value = true
-  // 如果传入了目标词库名称，使用它；否则使用默认的导入分类
+  // 如果传入了目标词库名称，使用它；否则使用默认的导入分�?
   const categoryToUse = targetCategory || importCategory.value
   
   try {
@@ -1463,7 +1463,7 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
       .select('spelling, part_of_speech')
       .eq('category', categoryToUse)
     
-    // 使用 拼写|词性 作为唯一键
+    // 使用 拼写|词�?作为唯一�?
     const existingSpellings = new Set(
       (existingWords || []).map(w => `${w.spelling.toLowerCase()}|${(w.part_of_speech || '').toLowerCase()}`)
     )
@@ -1491,7 +1491,7 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
       
       if (!exampleSentence || !phonetic) {
         try {
-          console.log('开始获取单词数据:', word.spelling, '词性:', word.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+          console.log('开始获取单词数�?', word.spelling, '词�?', word.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配�? : '未配�?)
           const data = await fetchWordData(word.spelling, deepseekApiKey.value, word.part_of_speech)
           console.log('获取到的数据:', word.spelling, data)
           
@@ -1501,11 +1501,11 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
           
           if (!exampleSentence && data.example) {
             exampleSentence = data.example
-            console.log('获取到例句:', exampleSentence)
+            console.log('获取到例�?', exampleSentence)
           }
         } catch (apiError) {
           console.error('获取单词数据失败:', word.spelling, apiError.message)
-          // 继续导入，不因为API失败而中断
+          // 继续导入，不因为API失败而中�?
         }
         
         // 添加延迟避免 API 限流
@@ -1527,7 +1527,7 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
         failCount++
       } else {
         successCount++
-        // 添加到已存在集合中，避免同一批次中重复导入（使用拼写|词性作为键）
+        // 添加到已存在集合中，避免同一批次中重复导入（使用拼写|词性作为键�?
         existingSpellings.add(wordKey)
       }
     }
@@ -1544,9 +1544,9 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
     wordValidationResults.value = []
     pendingImportWords.value = []
     
-    let message = `导入完成！成功: ${successCount} 个，失败: ${failCount} 个`
+    let message = `导入完成！成�? ${successCount} 个，失败: ${failCount} 个`
     if (duplicateCount > 0) {
-      message += `，重复: ${duplicateCount} 个`
+      message += `，重�? ${duplicateCount} 个`
     }
     alert(message)
   } catch (error) {
@@ -1560,15 +1560,15 @@ const importWordsToDbWithValidation = async (wordsToImport, targetCategory = nul
 // 选中单词
 const selectedWords = ref([])
 
-// 全选状态
+// 全选状�?
 const isAllSelected = computed(() => {
   return filteredWords.value.length > 0 && selectedWords.value.length === filteredWords.value.length
 })
 
-// 新词库表单
+// 新词库表�?
 const newCategory = ref('')
 
-// 动态词库列表（默认包含基础词库）
+// 动态词库列表（默认包含基础词库�?
 const categories = ref(['CET-4', 'CET-6', 'custom'])
 
 // 从数据库加载词库分类
@@ -1585,7 +1585,7 @@ const loadCategories = async () => {
     
     if (data) {
       const uniqueCategories = [...new Set(data.map(w => w.category).filter(c => c && c.trim()))]
-      // 只显示公共词库分类，不显示custom（学生自定义）
+      // 只显示公共词库分类，不显示custom（学生自定义�?
       const defaultCategories = ['CET-4', 'CET-6']
       categories.value = [...new Set([...defaultCategories, ...uniqueCategories])]
     }
@@ -1619,7 +1619,7 @@ const getCategoryClass = (category) => {
 const fetchWords = async () => {
   loading.value = true
   try {
-    // 只获取公共词库，不显示学生自定义单词（custom分类）
+    // 只获取公共词库，不显示学生自定义单词（custom分类�?
     const { data, error } = await supabase
       .from('words')
       .select('*')
@@ -1634,7 +1634,7 @@ const fetchWords = async () => {
     if (data) {
       words.value = data || []
     }
-    // 加载完单词后也加载词库分类
+    // 加载完单词后也加载词库分�?
     await loadCategories()
   } finally {
     loading.value = false
@@ -1670,7 +1670,7 @@ const closeWordModal = () => {
 const fetchWordInfo = async () => {
   if (!wordForm.value.spelling.trim()) return
   
-  // 检查是否选择了词性
+  // 检查是否选择了词�?
   if (!wordForm.value.part_of_speech) {
     alert('请先选择词性，以便获取对应词性的例句')
     return
@@ -1678,22 +1678,22 @@ const fetchWordInfo = async () => {
   
   fetchingWord.value = true
   try {
-    console.log('开始获取单词信息:', wordForm.value.spelling, '词性:', wordForm.value.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+    console.log('开始获取单词信�?', wordForm.value.spelling, '词�?', wordForm.value.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配�? : '未配�?)
     const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value, wordForm.value.part_of_speech)
     console.log('获取到的完整数据:', JSON.stringify(data, null, 2))
     
-    // 音标填充到音标字段
+    // 音标填充到音标字�?
     if (data.phonetic && !wordForm.value.phonetic) {
       wordForm.value.phonetic = data.phonetic
-      console.log('获取到音标:', data.phonetic)
+      console.log('获取到音�?', data.phonetic)
     }
     
-    // 只填充真正的例句到例句字段，不包含释义
+    // 只填充真正的例句到例句字段，不包含释�?
     if (data.example && !wordForm.value.example_sentence) {
       wordForm.value.example_sentence = data.example
       console.log('成功获取例句:', data.example)
     } else {
-      console.log('未能获取例句 - Dictionary API返回例句:', data.example, 'DeepSeek API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+      console.log('未能获取例句 - Dictionary API返回例句:', data.example, 'DeepSeek API Key:', deepseekApiKey.value ? '已配�? : '未配�?)
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
@@ -1706,20 +1706,20 @@ const saveWord = async () => {
   // 验证单词拼写
   const spelling = wordForm.value.spelling.trim()
   if (!spelling) {
-    alert('请输入英文单词')
+    alert('请输入英文单�?)
     return
   }
   
   // 基本格式验证（允许空格和连字符）
   const cleanWord = spelling.toLowerCase()
   if (!/^[a-z\s\-]+$/.test(cleanWord)) {
-    alert('单词只允许包含字母、空格和连字符')
+    alert('单词只允许包含字母、空格和连字�?)
     return
   }
   
-  // 检查是否有连续的特殊字符
+  // 检查是否有连续的特殊字�?
   if (/[-]{2,}/.test(cleanWord)) {
-    alert('单词不能包含连续连字符')
+    alert('单词不能包含连续连字�?)
     return
   }
   
@@ -1750,7 +1750,7 @@ const saveWord = async () => {
     
     // 检查是否包含空格（可能是短语动词）
     if (cleanWord.includes(' ')) {
-      // 检查是否是常见的短语动词
+      // 检查是否是常见的短语动�?
       if (commonPhrasalVerbs.includes(cleanWord)) {
         isPhrasalVerb = true
       } else {
@@ -1781,13 +1781,13 @@ const saveWord = async () => {
     
     // 直接弹窗显示验证结果
     if (!isValidWord) {
-      alert(`❌ 单词 "${cleanWord}" 验证失败：在字典中未找到该单词，请检查拼写是否正确`)
+      alert(`�?单词 "${cleanWord}" 验证失败：在字典中未找到该单词，请检查拼写是否正确`)
       saving.value = false
       return
     } else if (isPhrasalVerb) {
-      alert(`✅ 单词 "${cleanWord}" 验证通过！（短语动词）`)
+      alert(`�?单词 "${cleanWord}" 验证通过！（短语动词）`)
     } else {
-      alert(`✅ 单词 "${cleanWord}" 验证通过！`)
+      alert(`�?单词 "${cleanWord}" 验证通过！`)
     }
     
     // 管理员添加的单词
@@ -1808,7 +1808,7 @@ const saveWord = async () => {
     
     await fetchWords()
     closeWordModal()
-    alert('单词保存成功！')
+    alert('单词保存成功�?)
   } catch (error) {
     console.error('Save word error:', error)
     alert('保存失败，请重试: ' + error.message)
@@ -1828,7 +1828,7 @@ const deleteWord = async (word) => {
   }
 }
 
-// 切换全选
+// 切换全�?
 const toggleSelectAll = () => {
   if (isAllSelected.value) {
     selectedWords.value = []
@@ -1837,11 +1837,11 @@ const toggleSelectAll = () => {
   }
 }
 
-// 批量删除选中的单词
+// 批量删除选中的单�?
 const batchDeleteWords = async () => {
   if (selectedWords.value.length === 0) return
   
-  if (confirm(`确定删除选中的 ${selectedWords.value.length} 个单词吗？`)) {
+  if (confirm(`确定删除选中�?${selectedWords.value.length} 个单词吗？`)) {
     deleting.value = true
     try {
       for (const wordId of selectedWords.value) {
@@ -1852,7 +1852,7 @@ const batchDeleteWords = async () => {
       }
       selectedWords.value = []
       await fetchWords()
-      alert('删除成功！')
+      alert('删除成功�?)
     } catch (error) {
       console.error('批量删除失败:', error)
       alert('删除失败，请重试')
@@ -1869,42 +1869,42 @@ const deleteCategory = async (category) => {
   }
   
   try {
-    // 删除该分类下的所有单词
+    // 删除该分类下的所有单�?
     await supabase
       .from('words')
       .delete()
       .eq('category', category)
     
     await fetchWords()
-    alert('词库删除成功！')
+    alert('词库删除成功�?)
   } catch (error) {
     console.error('删除词库失败:', error)
     alert('删除失败，请重试')
   }
 }
 
-// 打开重命名词库弹窗
+// 打开重命名词库弹�?
 const renameCategory = (category) => {
   renamingCategory.value = category
   newCategoryName.value = category
   showRenameModal.value = true
 }
 
-// 确认重命名词库
+// 确认重命名词�?
 const confirmRenameCategory = async () => {
   const oldName = renamingCategory.value
   const newName = newCategoryName.value.trim()
   
   if (!newName || newName === oldName) return
   
-  // 检查新名称是否已存在
+  // 检查新名称是否已存�?
   if (categories.value.includes(newName)) {
-    alert('该词库名称已存在！')
+    alert('该词库名称已存在�?)
     return
   }
   
   try {
-    // 更新该分类下所有单词的category（使用admin权限）
+    // 更新该分类下所有单词的category（使用admin权限�?
     const { error } = await supabaseAdmin
       .from('words')
       .update({ category: newName })
@@ -1919,14 +1919,14 @@ const confirmRenameCategory = async () => {
     newCategoryName.value = ''
     alert('词库重命名成功！')
   } catch (error) {
-    console.error('重命名词库失败:', error)
-    alert('重命名失败，请重试')
+    console.error('重命名词库失�?', error)
+    alert('重命名失败，请重�?)
   }
 }
 
 const downloadTemplate = () => {
   const template = [
-    ['英文', '词性', '中文', '音标', '例句'],
+    ['英文', '词�?, '中文', '音标', '例句'],
     ['example', 'n.', '例子', '/ɪɡˈzæmpəl/', 'This is an example sentence.']
   ]
   
@@ -2016,18 +2016,18 @@ const parseTxtFile = (text) => {
   return words
 }
 
-// 打开添加单词弹窗，并设置默认分类为当前选中的词库
+// 打开添加单词弹窗，并设置默认分类为当前选中的词�?
 const openAddWordModal = () => {
-  // 如果当前选择了特定词库（不是"全部"），则设置默认分类
+  // 如果当前选择了特定词库（不是"全部"），则设置默认分�?
   if (filterCategory.value && filterCategory.value !== 'all') {
     wordForm.value.category = filterCategory.value
   }
   showAddWordModal.value = true
 }
 
-// 打开批量导入弹窗，并设置默认分类为当前选中的词库
+// 打开批量导入弹窗，并设置默认分类为当前选中的词�?
 const openImportModal = () => {
-  // 如果当前选择了特定词库（不是"全部"），则设置默认导入分类
+  // 如果当前选择了特定词库（不是"全部"），则设置默认导入分�?
   if (filterCategory.value && filterCategory.value !== 'all') {
     importCategory.value = filterCategory.value
   }
@@ -2035,7 +2035,7 @@ const openImportModal = () => {
 }
 
 const importWordsToDb = async () => {
-  // 检查是否需要弹出API提示（没有API Key且没有选择不再提醒）
+  // 检查是否需要弹出API提示（没有API Key且没有选择不再提醒�?
   const hasApiKey = !!deepseekApiKey.value || !!localStorage.getItem('deepseek_api_key')
   const noPrompt = noMorePrompt.value
   
@@ -2052,40 +2052,40 @@ const importWordsToDb = async () => {
   await doImportWithValidation()
 }
 
-// 执行导入验证和导入
+// 执行导入验证和导�?
 const doImportWithValidation = async () => {
-  // 先进行拼写验证
+  // 先进行拼写验�?
   validatingWords.value = true
   
   try {
-    // 验证所有单词
-    console.log('开始验证单词，共', importWords.value.length, '个')
+    // 验证所有单�?
+    console.log('开始验证单词，�?, importWords.value.length, '�?)
     const results = await validateWordsList(importWords.value, importCategory.value)
     wordValidationResults.value = results
     
-    // 统计有效和无效单词
+    // 统计有效和无效单�?
     const validCount = results.filter(w => w.valid).length
     const invalidCount = results.filter(w => !w.valid).length
     
-    console.log('验证完成：有效', validCount, '个，无效', invalidCount, '个')
+    console.log('验证完成：有�?, validCount, '个，无效', invalidCount, '�?)
     
     if (invalidCount > 0) {
       // 显示验证结果弹窗，让用户确认
-      console.log('显示验证弹窗，有', invalidCount, '个无效单词')
+      console.log('显示验证弹窗，有', invalidCount, '个无效单�?)
       showValidationModal.value = true
-      // 滚动到第一个无效单词
+      // 滚动到第一个无效单�?
       setTimeout(() => {
         scrollToFirstInvalid()
       }, 300)
-      alert(`验证完成！发现 ${invalidCount} 个问题单词，请检查确认后再导入。`)
+      alert(`验证完成！发�?${invalidCount} 个问题单词，请检查确认后再导入。`)
     } else {
-      // 所有单词都有效，直接导入
-      console.log('所有单词验证通过，直接导入')
+      // 所有单词都有效，直接导�?
+      console.log('所有单词验证通过，直接导�?)
       await importWordsToDbWithValidation(results)
     }
   } catch (error) {
     console.error('验证单词失败:', error)
-    alert('验证失败: ' + error.message + '\n将直接导入所有单词。')
+    alert('验证失败: ' + error.message + '\n将直接导入所有单词�?)
     // 验证失败时也允许导入
     await importWordsToDbWithValidation(importWords.value)
   } finally {
@@ -2097,10 +2097,10 @@ const doImportWithValidation = async () => {
 
 // 新建词库
 const createCategory = async () => {
-  console.log('createCategory 函数被调用')
+  console.log('createCategory 函数被调�?)
   const categoryName = newCategory.value.trim()
   if (!categoryName) {
-    alert('请输入词库名称')
+    alert('请输入词库名�?)
     return
   }
   
@@ -2125,46 +2125,46 @@ const createCategory = async () => {
       targetCategoryForImport.value = categoryName
       waitingForApiKey.value = true
       showDeepseekPrompt.value = true
-      // 保持按钮等待状态
+      // 保持按钮等待状�?
       return
     }
     
-    // 继续执行验证和导入
+    // 继续执行验证和导�?
     validatingWords.value = true
     
     try {
-      // 验证所有单词（与批量导入相同的验证逻辑）
-      console.log('新建词库：开始验证单词，共', importWords.value.length, '个')
+      // 验证所有单词（与批量导入相同的验证逻辑�?
+      console.log('新建词库：开始验证单词，�?, importWords.value.length, '�?)
       const results = await validateWordsList(importWords.value, categoryName)
       wordValidationResults.value = results
       
-      // 统计有效和无效单词
+      // 统计有效和无效单�?
       const validCount = results.filter(w => w.valid).length
       const invalidCount = results.filter(w => !w.valid).length
       
-      console.log('验证完成：有效', validCount, '个，无效', invalidCount, '个')
+      console.log('验证完成：有�?, validCount, '个，无效', invalidCount, '�?)
       
       if (invalidCount > 0) {
         // 显示验证结果弹窗，让用户确认
-        // 保存目标词库名称到临时变量
+        // 保存目标词库名称到临时变�?
         targetCategoryForImport.value = categoryName
         console.log('显示验证弹窗，有', invalidCount, '个无效单词，目标是新词库:', categoryName)
         showValidationModal.value = true
-        // 滚动到第一个无效单词
+        // 滚动到第一个无效单�?
         setTimeout(() => {
           scrollToFirstInvalid()
         }, 300)
-        alert(`验证完成！发现 ${invalidCount} 个问题单词，请检查确认后再导入。`)
+        alert(`验证完成！发�?${invalidCount} 个问题单词，请检查确认后再导入。`)
         // 不关闭弹窗，等待用户在验证弹窗中确认
         return
       } else {
-        // 所有单词都有效，直接导入到新词库
-        console.log('所有单词验证通过，直接导入到新词库:', categoryName)
+        // 所有单词都有效，直接导入到新词�?
+        console.log('所有单词验证通过，直接导入到新词�?', categoryName)
         await importWordsToDbWithValidation(results, categoryName)
       }
     } catch (error) {
       console.error('验证单词失败:', error)
-      alert('验证失败: ' + error.message + '\n将直接导入所有单词。')
+      alert('验证失败: ' + error.message + '\n将直接导入所有单词�?)
       // 验证失败时也允许导入
       await importWordsToDbWithValidation(importWords.value, categoryName)
     } finally {
@@ -2172,9 +2172,9 @@ const createCategory = async () => {
       creatingCategory.value = false
     }
   } else {
-    // 没有导入单词，只创建空词库
+    // 没有导入单词，只创建空词�?
     try {
-      // 确保新词库在分类列表中显示
+      // 确保新词库在分类列表中显�?
       if (!categories.value.includes(categoryName)) {
         categories.value.push(categoryName)
       }
@@ -2184,7 +2184,7 @@ const createCategory = async () => {
       
       showCategoryModal.value = false
       newCategory.value = ''
-      alert('词库创建成功！')
+      alert('词库创建成功�?)
     } catch (error) {
       console.error('Create category error:', error)
       alert('创建失败: ' + (error.message || JSON.stringify(error)))
@@ -2198,7 +2198,7 @@ const createCategory = async () => {
   // 刷新单词列表
   await fetchWords()
   
-  // 确保新词库在分类列表中显示
+  // 确保新词库在分类列表中显�?
   if (!categories.value.includes(categoryName)) {
     categories.value.push(categoryName)
   }
@@ -2211,7 +2211,7 @@ const createCategory = async () => {
   importWords.value = []
   importing.value = false
   creatingCategory.value = false
-  alert('词库创建成功！')
+  alert('词库创建成功�?)
 }
 
 // 触发新建词库的文件选择
@@ -2264,13 +2264,13 @@ const handleImportFileSelect = async (event) => {
   }
 }
 
-// 批量更新缺失例句的单词
+// 批量更新缺失例句的单�?
 const batchUpdateExamples = async () => {
-  // 找出没有例句的单词
+  // 找出没有例句的单�?
   const wordsWithoutExamples = words.value.filter(w => !w.example_sentence || !w.phonetic)
   
   if (wordsWithoutExamples.length === 0) {
-    alert('所有单词都已包含例句和音标！')
+    alert('所有单词都已包含例句和音标�?)
     return
   }
   
@@ -2286,7 +2286,7 @@ const batchUpdateExamples = async () => {
     for (let i = 0; i < wordsWithoutExamples.length; i++) {
       const word = wordsWithoutExamples[i]
       
-      // 获取API数据（传递词性以获取对应词性的例句）
+      // 获取API数据（传递词性以获取对应词性的例句�?
       const data = await fetchWordData(word.spelling, deepseekApiKey.value, word.part_of_speech)
       
       const updateData = {}
@@ -2321,7 +2321,7 @@ const batchUpdateExamples = async () => {
     }
     
     await fetchWords()
-    alert(`更新完成！成功: ${successCount} 个，失败: ${failCount} 个`)
+    alert(`更新完成！成�? ${successCount} 个，失败: ${failCount} 个`)
   } catch (error) {
     console.error('批量更新失败:', error)
     alert('批量更新失败，请重试')
@@ -2332,10 +2332,8 @@ const batchUpdateExamples = async () => {
 
 onMounted(async () => {
   await fetchWords()
-  // test admin edit
+  // fixed
   await loadCategories()
   await loadBaiduConfig()
-})
-  await loadCategories()
 })
 </script>
