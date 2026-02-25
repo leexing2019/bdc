@@ -805,7 +805,8 @@ const handleTranslate = async () => {
   translating.value = true
   
   try {
-    const result = await translateToChinese(newWord.value.spelling, baiduConfig.value.appid, baiduConfig.value.secret)
+    // 直接调用，Edge Function 会自动从数据库获取配置
+    const result = await translateToChinese(newWord.value.spelling)
     
     if (result.success) {
       newWord.value.meaning = result.translation
