@@ -112,7 +112,7 @@
       </div>
 
       <!-- Main Content -->
-      <main class="flex-1 lg:ml-64 min-h-screen">
+      <main class="flex-1 lg:ml-64 min-h-screen pb-20 lg:pb-0">
         <div class="p-4 lg:p-8">
           <router-view />
         </div>
@@ -189,6 +189,7 @@ const mobileNavItems = [
   { name: '学习', path: '/student/dashboard', icon: DashboardIcon },
   { name: '背诵', path: '/student/study', icon: StudyIcon },
   { name: '单词', path: '/student/words', icon: WordsIcon },
+  { name: '导入', path: '/student/import', icon: ImportIcon },
   { name: '我的', path: '/student/profile', icon: ProfileIcon }
 ]
 
