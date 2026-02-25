@@ -131,13 +131,14 @@ export async function checkBaiduTranslationAvailable() {
       .select('setting_value')
       .in('setting_key', ['baidu_translate_appid', 'baidu_translate_secret'])
     
+    console.log('[百度翻译] 完整查询结果:', JSON.stringify(data))
     console.log('[百度翻译] 查询结果:', { data, error })
     
     const appid = data?.find(s => s.setting_key === 'baidu_translate_appid')?.setting_value
     const secret = data?.find(s => s.setting_key === 'baidu_translate_secret')?.setting_value
     
-    console.log('[百度翻译] appid:', appid ? '已设置' : '未设置')
-    console.log('[百度翻译] secret:', secret ? '已设置' : '未设置')
+    console.log('[百度翻译] appid 值:', JSON.stringify(appid), '长度:', appid?.length)
+    console.log('[百度翻译] secret 值:', JSON.stringify(secret), '长度:', secret?.length)
     
     if (!appid || !secret) {
       return { available: false, message: '未配置百度翻译 API' }
