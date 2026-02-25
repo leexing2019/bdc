@@ -4,7 +4,9 @@
     <div>
       <h1 class="text-2xl font-bold text-gray-800">系统设置</h1>
       <p class="text-gray-500 mt-1">配置系统参数和第三方服务</p>
+
     </div>
+
 
 
     <!-- 百度翻译API设置 -->
@@ -13,7 +15,9 @@
         <div>
           <h2 class="text-lg font-semibold text-gray-800">百度翻译 API</h2>
           <p class="text-sm text-gray-500 mt-1">用于自动获取单词中文释义（免费额度：100万字符/月）</p>
+
         </div>
+
         <span 
           class="px-3 py-1 text-sm rounded-full"
           :class="baiduConfig.configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
@@ -21,6 +25,7 @@
           {{ baiduConfig.configured ? '已配置' : '未配置' }}
         </span>
       </div>
+
 
       <div class="space-y-4">
         <div>
@@ -43,6 +48,7 @@
           />
         </div>
 
+
         <div class="flex items-center space-x-3">
           <button
             @click="saveBaiduConfig"
@@ -61,11 +67,14 @@
           </button>
         </div>
 
+
         <p class="text-xs text-gray-500">
           申请地址：<a href="https://fanyi.baidu.com/" target="_blank" class="text-primary-600 hover:underline">百度翻译开放平台</a>
         </p>
+
       </div>
     </div>
+
 
 
     <!-- DeepSeek API设置 -->
@@ -73,8 +82,10 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">DeepSeek API</h2>
-          <p class="text-sm text-gray-500 mt-1">用于生成英文例句（可选，未配置时使用Dictionary API）</p>
+          <p class="text-sm text-gray-500 mt-1">用于补充生成英文例句（优先使用Dictionary API，仅在Dictionary API无例句时调用DeepSeek）</p>
+
         </div>
+
         <span 
           class="px-3 py-1 text-sm rounded-full"
           :class="deepseekConfigured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
@@ -82,6 +93,7 @@
           {{ deepseekConfigured ? '已配置' : '未配置' }}
         </span>
       </div>
+
 
       <div class="space-y-4">
         <div>
@@ -94,6 +106,7 @@
           />
         </div>
 
+
         <div class="flex items-center space-x-3">
           <button
             @click="saveDeepseekConfig"
@@ -104,11 +117,13 @@
           </button>
         </div>
 
+
         <p class="text-xs text-gray-500">
           申请地址：<a href="https://platform.deepseek.com/" target="_blank" class="text-primary-600 hover:underline">DeepSeek 开放平台</a>
         </p>
       </div>
     </div>
+
 
 
     <!-- 使用说明 -->
@@ -118,10 +133,11 @@
         <li>• 百度翻译 API 用于自动获取单词的中文释义</li>
         <li>• 免费额度：标准版5万字符/月，高级版100万字符/月</li>
         <li>• 超额后系统会提示用户手动输入中文释义</li>
-        <li>• DeepSeek API 用于生成更自然的英文例句（可选）</li>
-        <li>• 未配置DeepSeek时，系统会优先使用Dictionary API（免费）获取例句</li>
+        <li>• DeepSeek API 用于补充生成更自然的英文例句</li>
+        <li>• 系统优先使用Dictionary API（免费）获取例句，仅在无例句时调用DeepSeek</li>
       </ul>
     </div>
+
   </div>
 </template>
 
@@ -131,10 +147,12 @@ import { ref, onMounted } from 'vue'
 import { supabaseAdmin } from '@/lib/supabase'
 
 
+
 // 状态
 const saving = ref(false)
 const testing = ref(false)
 const deepseekConfigured = ref(false)
+
 
 // 百度翻译配置
 const baiduConfig = ref({
@@ -143,8 +161,10 @@ const baiduConfig = ref({
   configured: false
 })
 
+
 // DeepSeek配置（存储在localStorage）
 const deepseekConfig = ref('')
+
 
 
 // 加载配置
@@ -164,6 +184,7 @@ const loadConfig = async () => {
       baiduConfig.value.secret = secret?.setting_value || ''
       baiduConfig.value.configured = !!(appid?.setting_value && secret?.setting_value)
     }
+
   } catch (error) {
     console.error('加载配置失败:', error)
   }
@@ -173,6 +194,7 @@ const loadConfig = async () => {
   deepseekConfig.value = savedDeepseekKey || ''
   deepseekConfigured.value = !!savedDeepseekKey
 }
+
 
 
 // 保存百度翻译配置
@@ -213,6 +235,7 @@ const saveBaiduConfig = async () => {
 }
 
 
+
 // 测试百度翻译
 const testBaiduTranslate = async () => {
   testing.value = true
@@ -232,6 +255,7 @@ const testBaiduTranslate = async () => {
     testing.value = false
   }
 }
+
 
 
 // 保存DeepSeek配置
@@ -254,6 +278,7 @@ const saveDeepseekConfig = async () => {
     saving.value = false
   }
 }
+
 
 
 // 页面加载时获取配置
