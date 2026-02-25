@@ -37,6 +37,7 @@
         <p class="text-sm text-gray-500">我的词库</p>
         <p class="text-2xl font-bold text-gray-800">个人词库</p>
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:ring-2 hover:ring-primary-500 transition">
         <p class="text-sm text-gray-500">个人词库单词数</p>
         <div v-if="statsLoading" class="flex items-center">
@@ -46,8 +47,10 @@
           </svg>
           <span class="text-gray-400">加载中...</span>
         </div>
+
         <p v-else class="text-2xl font-bold text-blue-600">{{ customWordCount }}</p>
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <p class="text-sm text-gray-500">教师分配单词数</p>
         <div v-if="statsLoading" class="flex items-center">
@@ -59,6 +62,7 @@
         </div>
         <p v-else class="text-2xl font-bold text-green-600">{{ assignedWordsCount }}</p>
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm flex items-center justify-center">
         <button
           @click="openImportModal"
@@ -158,6 +162,7 @@
       <p class="text-xs text-gray-400 mt-2">输入英文后选择词性，可点击"翻译"按钮获取中文释义（需管理员配置百度翻译API）</p>
     </div>
 
+
     <!-- Format Instructions -->
     <div class="bg-white rounded-xl p-4 shadow-sm">
       <h3 class="font-medium text-gray-800 mb-2">文件格式说明</h3>
@@ -166,8 +171,10 @@
         <code class="block bg-gray-100 p-2 rounded mt-1 text-xs">apple|n.|苹果</code>
         <code class="block bg-gray-100 p-2 rounded mt-1 text-xs">banana|n.|香蕉</code>
         <p class="mt-2"><strong>Excel 格式：</strong>三列依次为：英文、词性、中文</p>
+
       </div>
     </div>
+
 
     <!-- Import Modal -->
     <div v-if="showImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -195,6 +202,7 @@
           </div>
         </div>
 
+
         <!-- Processing -->
         <div v-if="processingFile" class="flex-1 flex items-center justify-center py-12">
           <div class="text-center">
@@ -205,6 +213,7 @@
             <p class="text-gray-600">正在解析文件...</p>
           </div>
         </div>
+
 
         <!-- Parsed Words Preview with Scroll -->
         <div v-if="parsedWords.length && !processingFile" class="flex-1 flex flex-col overflow-hidden">
@@ -224,6 +233,7 @@
                   <th class="text-left py-2 px-3 font-medium text-gray-500">中文</th>
                   <th class="text-left py-2 px-3 font-medium text-gray-500 w-20">操作</th>
                 </tr>
+
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="(word, index) in parsedWords" :key="index" class="hover:bg-gray-50">
@@ -266,6 +276,7 @@
           </div>
         </div>
 
+
         <!-- Actions -->
         <div class="mt-4 flex space-x-3">
           <button
@@ -287,8 +298,10 @@
             {{ getImportButtonText() }}
           </button>
         </div>
+
       </div>
     </div>
+
 
     <!-- Success Message -->
     <div v-if="showSuccess" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -317,6 +330,7 @@
                   <th class="text-left py-2 px-3 font-medium text-orange-700">英文</th>
                   <th class="text-left py-2 px-3 font-medium text-orange-700">词性</th>
                 </tr>
+
               </thead>
               <tbody class="divide-y divide-orange-100">
                 <tr v-for="(word, index) in duplicateWords" :key="index" class="hover:bg-orange-50">
@@ -328,6 +342,7 @@
           </div>
         </div>
 
+
         <!-- 无效单词信息 -->
         <div v-if="invalidWords.length > 0" class="mb-4">
           <p class="text-red-600 font-medium mb-2">以下 {{ invalidWords.length }} 个单词拼写无效（已跳过）：</p>
@@ -337,6 +352,7 @@
                 <tr>
                   <th class="text-left py-2 px-3 font-medium text-red-700">英文</th>
                 </tr>
+
               </thead>
               <tbody class="divide-y divide-red-100">
                 <tr v-for="(word, index) in invalidWords" :key="index" class="hover:bg-red-50">
@@ -355,6 +371,7 @@
         </button>
       </div>
     </div>
+
 
     <!-- DeepSeek API 提示弹窗 -->
     <div v-if="showDeepseekPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -424,6 +441,7 @@
       </div>
     </div>
 
+
     <!-- 单词验证结果弹窗 -->
     <div v-if="showValidationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl max-w-4xl w-full p-6 max-h-[80vh] flex flex-col">
@@ -432,7 +450,7 @@
         <div v-if="validatingWords" class="flex-1 flex flex-col items-center justify-center py-12">
           <svg class="w-12 h-12 text-primary-500 animate-spin mb-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <path class="opacity-75"fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <p class="text-gray-600 text-center">{{ validatingProgress || '正在验证单词...' }}</p>
           <p class="text-sm text-gray-400 mt-2">请稍候，不要关闭此窗口</p>
@@ -450,7 +468,7 @@
             <span class="text-green-600">✓ 有效: {{ wordValidationResults.filter(w => w.valid).length }} 个</span>
             <span class="text-red-600">✗ 无效: {{ wordValidationResults.filter(w => !w.valid).length }} 个</span>
           </div>
-          
+
           <!-- 问题单词列表 -->
           <div ref="validationListRef" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
             <table class="w-full text-sm">
@@ -483,22 +501,26 @@
                 <td class="py-2 px-3 font-medium" v-else>
                   {{ word.spelling }}
                 </td>
+
                 
                 <!-- 词性 -->
                 <td class="py-2 px-3 text-gray-600">
                   {{ word.partOfSpeech || '-' }}
                 </td>
+
                 
                 <!-- 中文释义 -->
                 <td class="py-2 px-3 text-gray-600 max-w-[150px] truncate">
                   {{ word.meaning || '-' }}
                 </td>
+
                 
                 <!-- 问题/状态 -->
                 <td class="py-2 px-3">
                   <span v-if="word.valid" class="text-green-600">✓ 有效</span>
                   <span v-else class="text-red-600">{{ word.reason || word.warning || '无效' }}</span>
                 </td>
+
                 
                 <!-- 操作 -->
                 <td class="py-2 px-3">
@@ -534,10 +556,13 @@
                     <span v-if="word.valid" class="text-green-600 text-xs">✓ 有效</span>
                   </div>
                 </td>
+
               </tr>
             </tbody>
+
           </table>
         </div>
+
         </div>
         
         <div class="mt-4 flex space-x-3">
@@ -562,10 +587,14 @@
             {{ wordValidationResults.every(w => w.valid) ? '确认导入' : `导入有效单词 (${wordValidationResults.filter(w => w.valid).length})` }}
           </button>
         </div>
+
       </div>
     </div>
+
   </div>
+
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
@@ -575,6 +604,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { fetchWordData, testDeepSeekApi } from '@/utils/dictionaryService'
 import { translateToChinese, checkBaiduTranslationAvailable } from '@/utils/baiduTranslate'
+
 
 const wordStore = useWordStore()
 const authStore = useAuthStore()
@@ -637,6 +667,9 @@ const statsLoading = ref(true)
 // ========== 百度翻译相关状态 ==========
 const baiduConfig = ref({ available: false, appid: '', secret: '', message: '检查中...' })
 const translating = ref(false)
+
+// 防抖定时器
+let spellingInputTimer = null
 
 // 词性映射：Dictionary API返回的词性 -> 用户友好的词性
 const dictionaryPOSMapping = {
@@ -741,10 +774,18 @@ const fetchPartOfSpeechList = async (spelling) => {
   }
 }
 
-// 英文输入时获取词性列表
-const onSpellingInput = async () => {
+// 英文输入时获取词性列表（带防抖）
+const onSpellingInput = () => {
+  // 清除之前的定时器
+  if (spellingInputTimer) {
+    clearTimeout(spellingInputTimer)
+  }
+  
   if (newWord.value.spelling && newWord.value.spelling.trim()) {
-    await fetchPartOfSpeechList(newWord.value.spelling)
+    // 设置新的定时器，延迟 500ms 后再调用 API
+    spellingInputTimer = setTimeout(async () => {
+      await fetchPartOfSpeechList(newWord.value.spelling)
+    }, 500)
   } else {
     dynamicPartOfSpeechOptions.value = []
   }
@@ -1000,6 +1041,7 @@ const validateWord = async (spelling) => {
     return { valid: false, message: '请输入单词' }
   }
 
+
   validationError.value = ''
   currentExample.value = null
 
@@ -1086,6 +1128,7 @@ const validateWordSpellingOnly = async (spelling) => {
     return { valid: false, message: '请输入单词' }
   }
 
+
   validationError.value = ''
 
   try {
@@ -1125,7 +1168,7 @@ const onPartOfSpeechChange = async () => {
     const wordData = await fetchWordData(spelling, apiKey, newWord.value.partOfSpeech)
     
     // 注意：API返回的是example而非examples
-    if (wordData?.example) {
+if (wordData?.example) {
       currentExample.value = {
         source: 'Dictionary API',
         sentence: wordData.example,
@@ -1190,6 +1233,7 @@ const openImportModal = () => {
   parsedWords.value = []
 }
 
+
 const closeImportModal = () => {
   showImportModal.value = false
   parsedWords.value = []
@@ -1197,14 +1241,17 @@ const closeImportModal = () => {
   // 不在这里清除duplicateWords，因为需要显示在成功弹窗中
 }
 
+
 const triggerImportFileInput = () => {
   importFileInput.value?.click()
 }
+
 
 const handleImportFileSelect = (event) => {
   const file = event.target.files[0]
   if (file) processFile(file)
 }
+
 
 const processFile = async (file) => {
   processingFile.value = true
@@ -1230,6 +1277,7 @@ const processFile = async (file) => {
   }
 }
 
+
 const parseTxt = (text) => {
   const lines = text.split('\n').filter(line => line.trim())
   const words = []
@@ -1254,6 +1302,7 @@ const parseTxt = (text) => {
   parsedWords.value = words
 }
 
+
 const parseExcel = (data) => {
   const words = []
   // Skip header row if exists
@@ -1273,14 +1322,17 @@ const parseExcel = (data) => {
   parsedWords.value = words
 }
 
+
 const removeWord = (index) => {
   parsedWords.value.splice(index, 1)
 }
+
 
 const clearParsed = () => {
   parsedWords.value = []
   if (importFileInput.value) importFileInput.value.value = ''
 }
+
 
 // 直接添加单个单词到数据库
 const addSingleWord = async () => {
@@ -1383,6 +1435,7 @@ const submitWords = async () => {
     alert('请先添加单词')
     return
   }
+
 
   // 先验证单词 - 设置等待状态
   validatingWords.value = true
@@ -1593,6 +1646,7 @@ const doImport = async (wordsToImport) => {
   }
 }
 
+
 // 验证单词列表
 const validateWordsList = async (words) => {
   const results = []
@@ -1786,6 +1840,7 @@ onMounted(() => {
   loadUserAssignedCategories()
   loadBaiduConfig()
 })
+
 
 // 监听 DeepSeek 弹窗关闭事件，当弹窗关闭时自动继续执行
 watch(showDeepseekPrompt, (newVal, oldVal) => {
