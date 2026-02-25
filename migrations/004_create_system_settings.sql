@@ -19,3 +19,23 @@ ON CONFLICT (setting_key) DO NOTHING;
 
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(setting_key);
+
+-- ============================================
+-- RLS 策略
+-- ============================================
+
+-- 启用 RLS
+ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+
+-- 策略：允许所有已认证用户读取系统设置（用于学生端检查API配置）
+CREATE POLICY "允许所有已认证用户读取系统设置" ON system_settings
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- 策略：仅允许管理员（service_role）修改系统设置
+CREATE POLICY "仅允许管理员修改系统设置" ON system_settings
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
