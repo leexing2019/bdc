@@ -125,13 +125,19 @@ function getErrorMessage(errorCode) {
  */
 export async function checkBaiduTranslationAvailable() {
   try {
-    const { data } = await supabaseAdmin
+    console.log('[百度翻译] 开始检查配置...')
+    const { data, error } = await supabaseAdmin
       .from('system_settings')
       .select('setting_value')
       .in('setting_key', ['baidu_translate_appid', 'baidu_translate_secret'])
     
+    console.log('[百度翻译] 查询结果:', { data, error })
+    
     const appid = data?.find(s => s.setting_key === 'baidu_translate_appid')?.setting_value
     const secret = data?.find(s => s.setting_key === 'baidu_translate_secret')?.setting_value
+    
+    console.log('[百度翻译] appid:', appid ? '已设置' : '未设置')
+    console.log('[百度翻译] secret:', secret ? '已设置' : '未设置')
     
     if (!appid || !secret) {
       return { available: false, message: '未配置百度翻译 API' }
@@ -140,6 +146,6 @@ export async function checkBaiduTranslationAvailable() {
     return { available: true, message: '已配置', appid, secret }
   } catch (error) {
     console.error('检查百度翻译配置失败:', error)
-    return { available: false, message: '检查配置失败' }
+    return { available: false, message: '检查配置失败: ' + error.message }
   }
 }
