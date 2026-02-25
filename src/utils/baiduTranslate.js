@@ -1,6 +1,8 @@
 // 百度翻译 API 服务
 // 用于获取单词的中文释义
 
+import { supabaseAdmin } from '@/lib/supabase'
+
 /**
  * 翻译文本（英文→中文）
  * @param {string} text - 要翻译的英文文本
@@ -12,6 +14,7 @@ export async function translateToChinese(text, appid, secret) {
   if (!text || !appid || !secret) {
     return { success: false, error: '缺少必要参数' }
   }
+
 
   try {
     // 生成签名
@@ -41,6 +44,7 @@ export async function translateToChinese(text, appid, secret) {
       return { success: false, error: errorMsg }
     }
 
+
     // 提取翻译结果
     if (data.trans_result && data.trans_result.length > 0) {
       return { success: true, translation: data.trans_result[0].dst }
@@ -61,7 +65,7 @@ async function generateSign(query, appid, salt, secret) {
   // 使用 Web Crypto API 进行 MD5 哈希
   const encoder = new TextEncoder()
   const data = encoder.encode(str)
-  const hashBuffer = await crypto.subtle.digest('MD5', data).catch(() => {
+const hashBuffer = await crypto.subtle.digest('MD5', data).catch(() => {
     // 如果 crypto.subtle 不支持 MD5，使用简单的哈希
     return simpleMD5(str)
   })
@@ -121,7 +125,7 @@ function getErrorMessage(errorCode) {
  */
 export async function checkBaiduTranslationAvailable() {
   try {
-    const { data } = await window.supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('system_settings')
       .select('setting_value')
       .in('setting_key', ['baidu_translate_appid', 'baidu_translate_secret'])
