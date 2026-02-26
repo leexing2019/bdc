@@ -295,12 +295,18 @@
       <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ editingWord ? '编辑单词' : '添加单词' }}</h3>
         
+        <!-- 百度翻译状态提示 -->
+        <div v-if="!baiduConfig.available && wordForm.spelling" class="mb-3 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+          提示：百度翻译API未配置，请手动输入中文释义或联系管理员配置
+        </div>
+        
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">英文单词</label>
             <div class="flex space-x-2">
               <input
                 v-model="wordForm.spelling"
+                @input="onSpellingInput"
                 type="text"
                 class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 placeholder="请输入英文单词"
@@ -309,7 +315,7 @@
                 @click="fetchWordInfo"
                 :disabled="fetchingWord || !wordForm.spelling.trim()"
                 class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center"
-                title="自动获取释义和例句"
+                title="自动获取音标和例句"
               >
                 <svg v-if="fetchingWord" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -325,21 +331,34 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">词性</label>
             <select
               v-model="wordForm.part_of_speech"
+              @change="onPartOfSpeechChange"
               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
             >
-              <option v-for="item in partOfSpeechOptions" :key="item.value" :value="item.value">
+              <option v-for="item in currentPartOfSpeechOptions" :key="item.value" :value="item.value">
                 {{ item.label }}
               </option>
             </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">中文释义</label>
-            <input
-              v-model="wordForm.meaning"
-              type="text"
-              class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="请输入中文释义"
-            />
+            <div class="relative">
+              <input
+                v-model="wordForm.meaning"
+                type="text"
+                class="w-full px-4 py-2 pr-20 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                placeholder="请输入中文释义"
+              />
+              <!-- 翻译按钮 -->
+              <button
+                v-if="wordForm.spelling && wordForm.part_of_speech && baiduConfig.available"
+                @click="handleTranslate"
+                :disabled="translating"
+                class="absolute right-1 top-1 bottom-1 px-3 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-50 whitespace-nowrap"
+                title="使用百度翻译获取中文释义"
+              >
+                {{ translating ? '翻译中...' : '翻译' }}
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">音标</label>
@@ -772,6 +791,7 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { fetchWordData, fetchWordDataBatch, testDeepSeekApi } from '@/utils/dictionaryService'
+import { translateToChinese, checkBaiduTranslationAvailable } from '@/utils/baiduTranslate'
 
 const words = ref([])
 const loading = ref(true)
@@ -803,7 +823,7 @@ const wordForm = ref({
 })
 
 // 词性选项
-const partOfSpeechOptions = [
+const partOfSpeechOptions = ref([
   { value: '', label: '请选择' },
   { value: 'n.', label: '名词 (n.)' },
   { value: 'v.', label: '动词 (v.)' },
@@ -816,7 +836,157 @@ const partOfSpeechOptions = [
   { value: 'conj.', label: '连词 (conj.)' },
   { value: 'prep.', label: '介词 (prep.)' },
   { value: 'int.', label: '感叹词 (int.)' }
-]
+])
+
+// ========== 百度翻译相关状态 ==========
+const baiduConfig = ref({ available: false, message: '检查中...' })
+const translating = ref(false)
+
+// 防抖定时器
+let spellingInputTimer = null
+
+// 动态词性选项（从Dictionary API获取）
+const dynamicPartOfSpeechOptions = ref([])
+
+// 计算属性：当前使用的词性选项
+const currentPartOfSpeechOptions = computed(() => {
+  if (dynamicPartOfSpeechOptions.value.length > 0) {
+    return [{ value: '', label: '请选择' }, ...dynamicPartOfSpeechOptions.value]
+  }
+  return partOfSpeechOptions.value
+})
+
+// 词性映射：Dictionary API返回的词性 -> 用户友好的词性
+const dictionaryPOSMapping = {
+  'noun': 'n.', 'verb': 'v.', 'transitive verb': 'vt.', 'intransitive verb': 'vi.',
+  'adjective': 'adj.', 'adverb': 'adv.', 'pronoun': 'pron.', 'numeral': 'num.',
+  'conjunction': 'conj.', 'preposition': 'prep.', 'interjection': 'int.'
+}
+
+// 从Dictionary API获取词性列表
+const fetchPartOfSpeechList = async (spelling) => {
+  if (!spelling || !spelling.trim()) {
+    dynamicPartOfSpeechOptions.value = []
+    return
+  }
+  
+  const cleanWord = spelling.trim().toLowerCase()
+  
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`)
+    
+    if (!response.ok) {
+      dynamicPartOfSpeechOptions.value = []
+      return
+    }
+    
+    const data = await response.json()
+    if (!data || !data[0] || !data[0].meanings) {
+      dynamicPartOfSpeechOptions.value = []
+      return
+    }
+    
+    // 提取所有词性并去重
+    const posSet = new Set()
+    for (const meaning of data[0].meanings) {
+      if (meaning.partOfSpeech) {
+        const mappedPOS = dictionaryPOSMapping[meaning.partOfSpeech.toLowerCase()]
+        if (mappedPOS) {
+          posSet.add(mappedPOS)
+        }
+      }
+    }
+    
+    // 转换为选项格式
+    const labelMap = {
+      'n.': '名词 (n.)', 'v.': '动词 (v.)', 'vt.': '及物动词 (vt.)',
+      'vi.': '不及物动词 (vi.)', 'adj.': '形容词 (adj.)', 'adv.': '副词 (adv.)',
+      'pron.': '代词 (pron.)', 'num.': '数词 (num.)', 'conj.': '连词 (conj.)',
+      'prep.': '介词 (prep.)', 'int.': '感叹词 (int.)'
+    }
+    
+    const posOptions = [...posSet].map(pos => ({
+      value: pos,
+      label: labelMap[pos] || pos
+    }))
+    
+    // 按固定顺序排序
+    const order = ['n.', 'v.', 'vt.', 'vi.', 'adj.', 'adv.', 'pron.', 'num.', 'conj.', 'prep.', 'int.']
+    posOptions.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value))
+    
+    dynamicPartOfSpeechOptions.value = posOptions
+  } catch (error) {
+    console.error('获取词性列表失败:', error)
+    dynamicPartOfSpeechOptions.value = []
+  }
+}
+
+// 英文输入时获取词性列表（带防抖）
+const onSpellingInput = () => {
+  // 清除之前的定时器
+  if (spellingInputTimer) {
+    clearTimeout(spellingInputTimer)
+  }
+  
+  if (wordForm.value.spelling && wordForm.value.spelling.trim()) {
+    // 设置新的定时器，延迟 500ms 后再调用 API
+    spellingInputTimer = setTimeout(async () => {
+      await fetchPartOfSpeechList(wordForm.value.spelling)
+    }, 500)
+  } else {
+    dynamicPartOfSpeechOptions.value = []
+  }
+}
+
+// 词性改变时清空动态列表
+const onPartOfSpeechChange = () => {
+  // 词性选择后，如果之前有动态获取的词性列表，可以选择保留或清空
+  // 这里保留以便用户切换词性选项
+}
+
+//处理翻译按钮点击
+const handleTranslate = async () => {
+  if (!wordForm.value.spelling || !wordForm.value.part_of_speech) {
+    return
+  }
+  
+  if (!baiduConfig.value.available) {
+    alert('百度翻译API未配置，请联系管理员配置或在下方手动输入中文释义')
+    return
+  }
+  
+  translating.value = true
+  
+  try {
+    // 直接调用，Edge Function 会自动从数据库获取配置
+    const result = await translateToChinese(wordForm.value.spelling)
+    
+    if (result.success) {
+      wordForm.value.meaning = result.translation
+    } else {
+      console.error('翻译失败:', result.error)
+      if (result.error && (result.error.includes('余额不足') || result.error.includes('频率') || result.error.includes('配额'))) {
+        alert('百度翻译API额度已用尽，请手动输入中文释义')
+      } else {
+        alert('翻译失败: ' + result.error)
+      }
+    }
+  } catch (error) {
+    console.error('翻译请求失败:', error)
+    alert('翻译请求失败，请手动输入中文释义')
+  } finally {
+    translating.value = false
+  }
+}
+
+// 加载百度翻译配置
+const loadBaiduConfig = async () => {
+  const result = await checkBaiduTranslationAvailable()
+  baiduConfig.value = {
+    available: result.available,
+    message: result.message
+  }
+}
 
 // 拼写验证相关
 const validatingWords = ref(false)
@@ -1667,21 +1837,29 @@ const closeWordModal = () => {
     category: 'CET-4',
     example_sentence: ''
   }
+  // 清空动态词性列表
+  dynamicPartOfSpeechOptions.value = []
 }
 
 const fetchWordInfo = async () => {
   if (!wordForm.value.spelling.trim()) return
   
-  // 检查是否选择了词性
-  if (!wordForm.value.part_of_speech) {
-    alert('请先选择词性，以便获取对应词性的例句')
-    return
-  }
-  
   fetchingWord.value = true
   try {
-    console.log('开始获取单词信息:', wordForm.value.spelling, '词性:', wordForm.value.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
-    const data = await fetchWordData(wordForm.value.spelling, deepseekApiKey.value, wordForm.value.part_of_speech)
+    const spelling = wordForm.value.spelling.trim().toLowerCase()
+    
+    // 如果没有选择词性，先获取可能的词性列表
+    if (!wordForm.value.part_of_speech) {
+      await fetchPartOfSpeechList(spelling)
+      
+      // 如果获取到了词性列表，自动选择第一个
+      if (dynamicPartOfSpeechOptions.value.length > 0) {
+        wordForm.value.part_of_speech = dynamicPartOfSpeechOptions.value[0].value
+      }
+    }
+    
+    console.log('开始获取单词信息:', spelling, '词性:', wordForm.value.part_of_speech, 'API Key:', deepseekApiKey.value ? '已配置' : '未配置')
+    const data = await fetchWordData(spelling, deepseekApiKey.value, wordForm.value.part_of_speech)
     console.log('获取到的完整数据:', JSON.stringify(data, null, 2))
     
     // 音标填充到音标字段
@@ -2336,5 +2514,7 @@ onMounted(async () => {
   await fetchWords()
   // 确保加载词库分类
   await loadCategories()
+  // 加载百度翻译配置
+  await loadBaiduConfig()
 })
 </script>

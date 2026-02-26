@@ -5,6 +5,7 @@
       <h1 class="text-2xl font-bold text-gray-800">个人中心</h1>
     </div>
 
+
     <!-- User Info Card -->
     <div class="bg-white rounded-xl p-6 shadow-sm">
       <div class="flex items-center space-x-4">
@@ -12,13 +13,21 @@
           <span class="text-2xl font-bold text-primary-700">
             {{ authStore.user?.username?.charAt(0).toUpperCase() }}
           </span>
+
         </div>
+
         <div>
+
           <h2 class="text-xl font-semibold text-gray-800">{{ authStore.user?.username }}</h2>
+
           <p class="text-gray-500">学生账号</p>
+
         </div>
+
       </div>
+
     </div>
+
 
     <!-- Stats -->
     <!-- 加载动画 -->
@@ -29,36 +38,52 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
+
           <p class="text-sm text-gray-500">加载中...</p>
+
         </div>
+
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
         <div class="flex flex-col items-center">
           <svg class="animate-spin h-8 w-8 text-green-600 mb-2" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
+
           <p class="text-sm text-gray-500">加载中...</p>
+
         </div>
+
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
         <div class="flex flex-col items-center">
           <svg class="animate-spin h-8 w-8 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
+
           <p class="text-sm text-gray-500">加载中...</p>
+
         </div>
+
       </div>
+
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
         <div class="flex flex-col items-center">
           <svg class="animate-spin h-8 w-8 text-orange-600 mb-2" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
+
           <p class="text-sm text-gray-500">加载中...</p>
+
         </div>
+
       </div>
+
     </div>
     <div v-else class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="bg-white rounded-xl p-3 shadow-sm text-center">
@@ -83,174 +108,281 @@
     <div class="bg-white rounded-xl shadow-sm">
       <div class="p-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">学习设置</h3>
+
       </div>
+
       <div class="divide-y divide-gray-100">
         <!-- 学习计划（多计划模式） -->
+
         <div v-if="learningPlans.length > 0" class="p-4">
           <div class="mb-3">
             <p class="font-medium text-gray-800">当前学习计划</p>
+
             <p class="text-sm text-gray-500">每日任务总量: {{ totalDailyLimit }} 词/天</p>
+
           </div>
+
           <div class="space-y-2">
             <div 
               v-for="plan in learningPlans" 
               :key="plan.id"
+
               class="flex items-center justify-between p-3 rounded-lg"
+
               :class="plan.status === 'paused' ? 'bg-gray-50' : 'bg-primary-50'"
             >
               <div class="flex items-center gap-3">
                 <span class="font-medium text-gray-800">{{ getCategoryLabel(plan.category) }}</span>
+
                 <span 
                   class="px-2 py-0.5 text-xs rounded-full"
+
                   :class="plan.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'"
                 >
                   {{ plan.status === 'active' ? '进行中' : '已暂停' }}
+
                 </span>
+
               </div>
+
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600">{{ plan.daily_limit }}词/天</span>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
 
         <!-- 教师分配每日新词数量 -->
+
         <div class="p-4 flex items-center justify-between">
           <div>
+
             <p class="font-medium text-gray-800">每日新词数量（教师分配）</p>
-            <p class="text-sm text-gray-500 whitespace-nowrap">
-              <span v-if="(authStore.user?.admin_daily_limit || 0) > 0">教师分配: {{ authStore.user?.admin_daily_limit }} 词/天</span>
+
+            <p class="text-sm text-gray-500 whitespace-nowrap"> 
+              <span v-if="teacherDailyLimit > 0">教师分配: {{ teacherDailyLimit }} 词/天</span>
+
               <span v-else class="text-orange-500">暂无分配</span>
+
             </p>
+
           </div>
+
           <div class="flex items-center space-x-2">
             <button
+
               @click="updateDailyLimitDecrease"
+
               :disabled="(authStore.user?.daily_limit || 0) <= (authStore.user?.admin_daily_limit || 0)"
+
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               -
             </button>
-            <span class="w-12 text-center font-medium">{{ authStore.user?.daily_limit || 0 }}</span>
+
+            <span class="w-12 text-center font-medium">{{ teacherDailyLimit }}</span>
+
             <button
+
               @click="updateDailyLimitIncrease"
+
               :disabled="(authStore.user?.daily_limit || 0) >= 50"
+
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               +
             </button>
+
           </div>
+
         </div>
+
 
         <!-- 个人词库每日新词数量 -->
+
         <div class="p-4 flex items-center justify-between">
           <div>
+
             <p class="font-medium text-gray-800">每日新词数量（个人词库）</p>
-            <p class="text-sm text-gray-500 whitespace-nowrap">
+
+<p class="text-sm text-gray-500 whitespace-nowrap"> 
               个人词库每日新增: {{ customDailyLimit }} 词/天
             </p>
+
           </div>
+
           <div class="flex items-center space-x-2">
             <button
+
               @click="updateCustomDailyLimitDecrease"
+
               :disabled="customDailyLimit <= 0"
+
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               -
             </button>
+
             <span class="w-12 text-center font-medium">{{ customDailyLimit }}</span>
+
             <button
+
               @click="updateCustomDailyLimitIncrease"
+
               :disabled="customDailyLimit >= 30"
+
               class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               +
             </button>
+
           </div>
+
         </div>
 
+
         <!-- 每日任务总量 -->
+
         <div class="p-4 bg-blue-50">
           <div class="flex items-center justify-between">
             <div>
+
               <p class="font-medium text-gray-800">每日任务总量</p>
-              <p class="text-sm text-gray-500">
+
+              <p class="text-sm text-gray-500"> 
                 每日学习新词总数 = 教师分配 + 个人词库
               </p>
+
             </div>
-            <div class="text-2xl font-bold text-blue-600 whitespace-nowrap">
-              {{ (authStore.user?.daily_limit || 0) + customDailyLimit }} 词/天
+
+            <div class="text-2xl font-bold text-blue-600 whitespace-nowrap"> 
+              {{ totalDailyLimit + customDailyLimit }} 词/天
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
 
+
     <!-- Password Change -->
+
     <div class="bg-white rounded-xl shadow-sm">
       <div class="p-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">修改密码</h3>
+
       </div>
+
       <div class="p-4 space-y-4">
         <div>
+
           <label class="block text-sm font-medium text-gray-700 mb-1">当前密码</label>
+
           <input
+
             v-model="passwordForm.oldPassword"
+
             type="password"
+
             class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+
             placeholder="请输入当前密码"
+
           />
         </div>
+
         <div>
+
           <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+
           <input
+
             v-model="passwordForm.newPassword"
+
             type="password"
+
             class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+
             placeholder="请输入新密码"
+
           />
         </div>
+
         <div>
+
           <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+
           <input
+
             v-model="passwordForm.confirmPassword"
+
             type="password"
+
             class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+
             placeholder="请再次输入新密码"
+
           />
         </div>
+
         <div v-if="passwordError" class="text-red-500 text-sm">{{ passwordError }}</div>
+
         <div v-if="passwordSuccess" class="text-green-600 text-sm">{{ passwordSuccess }}</div>
+
         <button
+
           @click="changePassword"
+
           :disabled="passwordLoading"
+
           class="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
         >
           {{ passwordLoading ? '修改中...' : '修改密码' }}
+
         </button>
+
       </div>
+
     </div>
 
+
     <!-- Logout -->
+
     <button
+
       @click="handleLogout"
+
       class="w-full py-3 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition"
     >
       退出登录
     </button>
+
   </div>
+
 </template>
 
+
 <script setup>
+
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWordStore } from '@/stores/words'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 
+
 const router = useRouter()
 const authStore = useAuthStore()
 const wordStore = useWordStore()
+
 
 const passwordForm = reactive({
   oldPassword: '',
@@ -267,13 +399,22 @@ const loading = ref(true) // 加载状态
 // 学习计划相关
 const learningPlans = ref([])
 
-// 计算每日任务总量
+// 计算属性：教师分配的每日新词数量
+const teacherDailyLimit = computed(() => {
+  if (learningPlans.value.length > 0) {
+    return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
+  }
+  return authStore.user?.daily_limit || 0
+})
+
+// 计算每日任务总量（不含个人词库）
 const totalDailyLimit = computed(() => {
   if (learningPlans.value.length > 0) {
     return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
   }
-  return (authStore.user?.daily_limit || 0) + customDailyLimit.value
+  return authStore.user?.daily_limit || 0
 })
+
 
 // 分类标签映射
 const getCategoryLabel = (category) => {
@@ -288,6 +429,7 @@ const getCategoryLabel = (category) => {
   }
   return labels[category] || category
 }
+
 
 // 加载学习计划
 const loadLearningPlans = async () => {
@@ -306,6 +448,7 @@ const loadLearningPlans = async () => {
   }
 }
 
+
 // 切换计划状态
 const togglePlanStatus = async (plan) => {
   const newStatus = plan.status === 'active' ? 'paused' : 'active'
@@ -323,6 +466,7 @@ const togglePlanStatus = async (plan) => {
   }
 }
 
+
 const updateDailyLimitDecrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 0
   const adminLimit = authStore.user?.admin_daily_limit || 0
@@ -336,6 +480,7 @@ const updateDailyLimitDecrease = async () => {
   await updateDailyLimit(newLimit)
 }
 
+
 const updateDailyLimitIncrease = async () => {
   const currentLimit = authStore.user?.daily_limit || 0
   
@@ -348,17 +493,20 @@ const updateDailyLimitIncrease = async () => {
   await updateDailyLimit(newLimit)
 }
 
+
 const updateCustomDailyLimitDecrease = async () => {
   if (customDailyLimit.value <= 0) return
   const newLimit = Math.max(0, customDailyLimit.value - 5)
   await updateCustomDailyLimit(newLimit)
 }
 
+
 const updateCustomDailyLimitIncrease = async () => {
   if (customDailyLimit.value >= 30) return
   const newLimit = Math.min(30, customDailyLimit.value + 5)
   await updateCustomDailyLimit(newLimit)
 }
+
 
 const updateCustomDailyLimit = async (newLimit) => {
   try {
@@ -370,10 +518,11 @@ const updateCustomDailyLimit = async (newLimit) => {
       .eq('user_id', authStore.user.id)
       .maybeSingle()
 
+
     if (existingSettings) {
       // 更新现有设置
       const { error } = await supabaseAdmin
-        .from('user_settings')
+.from('user_settings')
         .update({ custom_daily_limit: newLimit })
         .eq('user_id', authStore.user.id)
       
@@ -399,10 +548,12 @@ const updateCustomDailyLimit = async (newLimit) => {
         localStorage.setItem('smartmemo_profile_updated', 'true')
       }
     }
+
   } catch (error) {
     console.error('Update custom daily limit error:', error)
   }
 }
+
 
 // 加载用户设置
 const loadUserSettings = async () => {
@@ -419,6 +570,7 @@ const loadUserSettings = async () => {
         customDailyLimit.value = userSettings.custom_daily_limit
       }
     }
+
 
     // 计算总单词数（教师分配 + 个人词库）
     // 只有当用户有分配的词库类别时才统计教师分配的单词
@@ -455,6 +607,7 @@ const loadUserSettings = async () => {
   }
 }
 
+
 const updateDailyLimit = async (newLimit) => {
   try {
     const { error } = await supabase
@@ -462,37 +615,45 @@ const updateDailyLimit = async (newLimit) => {
       .update({ daily_limit: newLimit })
       .eq('id', authStore.user.id)
 
+
     if (!error) {
       authStore.user.daily_limit = newLimit
       localStorage.setItem('smartmemo_user', JSON.stringify(authStore.user))
       // 标记需要刷新首页数据
       localStorage.setItem('smartmemo_profile_updated', 'true')
     }
+
   } catch (error) {
     console.error('Update daily limit error:', error)
   }
 }
 
+
 const changePassword = async () => {
   passwordError.value = ''
   passwordSuccess.value = ''
+
 
   if (!passwordForm.oldPassword || !passwordForm.newPassword) {
     passwordError.value = '请填写所有字段'
     return
   }
 
+
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
     passwordError.value = '两次输入的密码不一致'
     return
   }
+
 
   if (passwordForm.newPassword.length < 6) {
     passwordError.value = '密码长度至少6位'
     return
   }
 
+
   passwordLoading.value = true
+
 
   try {
     const result = await authStore.updatePassword(passwordForm.oldPassword, passwordForm.newPassword)
@@ -505,20 +666,26 @@ const changePassword = async () => {
     } else {
       passwordError.value = result.error
     }
+
   } catch (error) {
     passwordError.value = '修改密码失败'
+
   } finally {
     passwordLoading.value = false
+
   }
 }
+
 
 const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
 
+
 onMounted(() => {
   loadUserSettings()
   loadLearningPlans()
 })
 </script>
+

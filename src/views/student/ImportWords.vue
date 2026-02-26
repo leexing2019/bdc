@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6 mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -119,23 +119,11 @@
               {{ item.label }}
             </option>
           </select>
-          <div class="flex-1 relative">
-            <input
+          <input
               v-model="newWord.meaning"
               placeholder="中文"
-              class="w-full px-3 py-2.5 pr-14 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-base"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-base"
             />
-            <!-- 翻译按钮 -->
-            <button
-              v-if="newWord.spelling && newWord.partOfSpeech"
-              @click="handleTranslate"
-              :disabled="translating"
-              class="absolute right-1 top-1 bottom-1 px-2 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-50 whitespace-nowrap"
-              title="使用百度翻译获取中文释义"
-            >
-              {{ translating ? '翻译中...' : '翻译' }}
-            </button>
-          </div>
         </div>
         <button
           @click="addSingleWord"
@@ -162,7 +150,7 @@
         提示：百度翻译API未配置，请手动输入中文释义或联系管理员配置
       </div>
       
-      <p class="text-xs text-gray-400 mt-2">输入英文后选择词性，可点击"翻译"按钮获取中文释义（需管理员配置百度翻译API）</p>
+      <p class="text-xs text-gray-400 mt-2">输入英文后选择词性，将自动获取中文释义和例句（需管理员配置百度翻译API）</p>
     </div>
 
 
@@ -380,12 +368,12 @@
     <div v-if="showDeepseekPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl max-w-md w-full p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-2">
-          启用智能例句生成
+          例句获取失败
         </h3>
         
         <div class="mb-4">
           <p class="text-sm text-gray-600 mb-3">
-            本系统将根据单词及词性，生成对应例句，用于背诵时的填空题型。系统将优先从免费的 Dictionary API 获取例句资源，若获取失败，可通过 DeepSeek 生成对应例句。
+            很抱歉，未能从 Dictionary API 获取到例句。系统可以通过 DeepSeek API 为您生成例句，用于背诵时的填空题型。
           </p>
           <p class="text-sm text-gray-600">
             如需启用此服务，请填写 DeepSeek API Key。此 Key 将存储在本地浏览器中，不会上传至服务器。
@@ -652,7 +640,8 @@ const deepseekApiKey = ref(localStorage.getItem('smartmemo_deepseek_key') || '')
 const newWord = ref({
   spelling: '',
   partOfSpeech: '',
-  meaning: ''
+  meaning: '',
+  phonetic: ''
 })
 
 // 用户分配的词库
@@ -836,6 +825,43 @@ const loadUserAssignedCategories = async () => {
   statsLoading.value = true
   
   try {
+    // 首先尝试从 user_learning_plans 表获取学习计划（与Dashboard保持一致）
+    const { data: plans, error: plansError } = await supabaseAdmin
+      .from('user_learning_plans')
+      .select('category, daily_limit')
+      .eq('user_id', authStore.user.id)
+      .eq('status', 'active')
+    
+    // 如果有学习计划，使用它
+    if (!plansError && plans && plans.length > 0) {
+      // 提取所有分配的词库分类
+      const assignedCats = [...new Set(plans.map(p => p.category))]
+      assignedCategories.value = assignedCats
+      
+      // 统计教师分配的所有词库的单词总数
+      let wordCount = 0
+      for (const cat of assignedCats) {
+        const { count } = await supabaseAdmin
+          .from('words')
+          .select('*', { count: 'exact', head: true })
+          .eq('category', cat)
+        wordCount += count || 0
+      }
+      assignedWordsCount.value = wordCount
+      
+      // 获取个人词库单词数量
+      const { count } = await supabaseAdmin
+        .from('words')
+        .select('*', { count: 'exact', head: true })
+        .eq('category', 'custom')
+        .eq('created_by', authStore.user.id)
+      customWordCount.value = count || 0
+      
+      statsLoading.value = false
+      return
+    }
+    
+    // 回退到旧的 user_settings 逻辑（兼容旧数据）
     // 从user_settings获取分配的词库 - 使用supabaseAdmin绕过RLS确保数据一致性
     const { data: userSettings } = await supabaseAdmin
       .from('user_settings')
@@ -889,6 +915,9 @@ const loadUserAssignedCategories = async () => {
     customWordCount.value = count || 0
   } catch (error) {
     console.error('加载用户词库失败:', error)
+    assignedCategories.value = []
+    assignedWordsCount.value = 0
+    customWordCount.value = 0
   } finally {
     statsLoading.value = false
   }
@@ -1152,9 +1181,9 @@ const validateWordSpellingOnly = async (spelling) => {
   }
 }
 
-// 词性选择变化时获取例句
+// 词性选择变化时自动获取中文释义、例句和音标
 const onPartOfSpeechChange = async () => {
-  // 如果没有选择词性或没有单词，则不获取例句
+  // 如果没有选择词性或没有单词，则不获取
   if (!newWord.value.partOfSpeech || !newWord.value.spelling) {
     return
   }
@@ -1165,21 +1194,47 @@ const onPartOfSpeechChange = async () => {
     return
   }
   
+  // 设置加载状态
+  newWord.value.meaning = '...'
   currentExample.value = null
   
+  // 自动获取中文释义（百度翻译）
+  if (baiduConfig.value.available) {
+    translating.value = true
+    try {
+      const result = await translateToChinese(spelling)
+      if (result.success) {
+        newWord.value.meaning = result.translation
+      } else {
+        newWord.value.meaning = '翻译失败，请手动输入'
+      }
+    } catch (error) {
+      console.error('自动翻译失败:', error)
+      newWord.value.meaning = '翻译失败，请手动输入'
+    } finally {
+      translating.value = false
+    }
+  }
+  
+  // 获取例句和音标（优先Dictionary API，后DeepSeek）
   try {
     const apiKey = localStorage.getItem('smartmemo_deepseek_key')
     const wordData = await fetchWordData(spelling, apiKey, newWord.value.partOfSpeech)
     
-    // 注意：API返回的是example而非examples
-if (wordData?.example) {
+    // 获取音标（如果还没有）
+    if (wordData?.phonetic && !newWord.value.phonetic) {
+      newWord.value.phonetic = wordData.phonetic
+    }
+    
+    // 优先从Dictionary API获取例句
+    if (wordData?.example) {
       currentExample.value = {
         source: 'Dictionary API',
         sentence: wordData.example,
         translation: ''
       }
     } else if (apiKey && wordData?.meaning) {
-      // 使用DeepSeek生成例句
+      // 有DeepSeek API Key，使用DeepSeek生成例句
       currentExample.value = {
         source: 'DeepSeek (生成中...)',
         sentence: '正在生成例句...',
@@ -1225,11 +1280,21 @@ if (wordData?.example) {
         console.error('DeepSeek例句生成失败:', e)
         currentExample.value = null
       }
+    } else if (!wordData?.example && !apiKey) {
+      // 没有从Dictionary API获取到例句，且没有DeepSeek API Key，弹出提示
+      // 显示已有的DeepSeek提示弹窗
+      showExamplePromptModal()
     }
   } catch (error) {
     console.error('获取例句失败:', error)
     currentExample.value = null
   }
+}
+
+// 显示例句提示弹窗
+const showExamplePromptModal = () => {
+  promptApiKey.value = ''
+  showDeepseekPrompt.value = true
 }
 
 const openImportModal = () => {
@@ -1359,11 +1424,12 @@ const addSingleWord = async () => {
       }
     }
     
-    // 构建要保存的单词数据，包含例句
+    // 构建要保存的单词数据，包含例句和音标
     const wordData = {
       spelling: newWord.value.spelling,
       partOfSpeech: newWord.value.partOfSpeech,
       meaning: newWord.value.meaning,
+      phonetic: newWord.value.phonetic || null,
       example_sentence: currentExample.value?.sentence || null
     }
     
@@ -1372,7 +1438,7 @@ const addSingleWord = async () => {
     
     if (result.successCount > 0) {
       alert(`✅ 单词 "${newWord.value.spelling}" 添加成功！`)
-      newWord.value = { spelling: '', partOfSpeech: '', meaning: '' }
+      newWord.value = { spelling: '', partOfSpeech: '', meaning: '', phonetic: '' }
       validationError.value = ''
       currentExample.value = null
       dynamicPartOfSpeechOptions.value = []
@@ -1860,3 +1926,4 @@ watch(showDeepseekPrompt, (newVal, oldVal) => {
   }
 })
 </script>
+
