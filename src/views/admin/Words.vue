@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="admin-words-page mobile-content-pb lg:pb-0">
     <!-- 加载中状态 -->
     <div v-if="loading" class="flex items-center justify-center py-20">
       <div class="text-center">
@@ -133,7 +133,7 @@
 
     <!-- Search & Filter -->
     <div class="bg-white rounded-xl p-4 shadow-sm">
-      <div class="flex flex-col lg:flex-row gap-4">
+      <div class="flex flex-col gap-3">
         <div class="flex-1 relative">
           <input
             v-model="searchQuery"
@@ -145,36 +145,87 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <select
-          v-model="filterCategory"
-          class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-        >
-          <option value="all">全部分类</option>
-          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-        </select>
-        <button
-          @click="openAddWordModal"
-          class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-        >
-          添加单词
-        </button>
-        <button
-          v-if="selectedWords.length > 0"
-          @click="batchDeleteWords"
-          :disabled="deleting"
-          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center"
-        >
-          <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ deleting ? '删除中...' : '删除选中 (' + selectedWords.length + ')' }}
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <select
+            v-model="filterCategory"
+            class="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          >
+            <option value="all">全部分类</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          </select>
+          <button
+            @click="openAddWordModal"
+            class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          >
+            添加单词
+          </button>
+          <button
+            v-if="selectedWords.length > 0"
+            @click="batchDeleteWords"
+            :disabled="deleting"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center"
+          >
+            <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ deleting ? '删除中...' : '删除选中 (' + selectedWords.length + ')' }}
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Words Table -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <!-- Mobile Word Cards -->
+    <div class="lg:hidden space-y-2">
+      <div
+        v-for="word in filteredWords"
+        :key="word.id"
+        class="bg-white rounded-xl p-3 shadow-sm border border-gray-100"
+      >
+        <!-- 第一行：复选框 + 单词 + 词性 + 分类 -->
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            :value="word.id"
+            v-model="selectedWords"
+            class="admin-checkbox w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
+          />
+          <span class="font-medium text-gray-800">{{ word.spelling }}</span>
+          <span class="text-gray-400 text-sm">{{ word.part_of_speech }}</span>
+          <span class="ml-auto admin-tag px-2 py-0.5 text-xs rounded-full flex-shrink-0" :class="getCategoryClass(word.category)">
+            {{ word.category }}
+          </span>
+        </div>
+        <!-- 第二行：音标 -->
+        <p v-if="word.phonetic" class="text-gray-400 text-xs mt-1">{{ word.phonetic }}</p>
+        <!-- 第三行：释义 -->
+        <p class="text-gray-600 text-sm mt-1 break-words leading-relaxed">{{ word.meaning }}</p>
+        <!-- 第四行：操作按钮 -->
+        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
+          <button
+            @click="editWord(word)"
+            class="admin-action-btn flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-md transition"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            编辑
+          </button>
+          <button
+            @click="deleteWord(word)"
+            class="admin-action-btn flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Words Table (Desktop only) -->
+    <div class="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50">
@@ -240,8 +291,8 @@
     </div>
 
     <!-- Add/Edit Word Modal -->
-    <div v-if="showAddWordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+    <div v-if="showAddWordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ editingWord ? '编辑单词' : '添加单词' }}</h3>
         
         <div class="space-y-4">
@@ -338,8 +389,8 @@
     </div>
 
     <!-- Import Modal -->
-    <div v-if="showImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6">
+    <div v-if="showImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">批量导入单词</h3>
         
         <!-- 词库选择 -->
@@ -416,8 +467,8 @@
     </div>
 
     <!-- New Category Modal -->
-    <div v-if="showCategoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+    <div v-if="showCategoryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">新建词库</h3>
         
         <div class="space-y-4">
@@ -483,8 +534,8 @@
     </div>
 
     <!-- Rename Category Modal -->
-    <div v-if="showRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+    <div v-if="showRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">重命名词库</h3>
         
         <div class="space-y-4">
@@ -527,8 +578,8 @@
     </div>
 
     <!-- DeepSeek API 提示弹窗 -->
-    <div v-if="showDeepseekPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6">
+    <div v-if="showDeepseekPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-800 mb-2">💡 提升导入体验</h3>
         <p class="text-sm text-gray-600 mb-4">
           为提升例句获取成功率，建议配置 DeepSeek API Key。配置后系统可以为单词自动生成英文例句，帮助更好地学习。
@@ -577,8 +628,8 @@
     </div>
 
     <!-- 单词验证结果弹窗 -->
-    <div v-if="showValidationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl max-w-4xl w-full p-6 max-h-[80vh] flex flex-col">
+    <div v-if="showValidationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl p-4 sm:p-6 max-h-[90vh] flex flex-col">
         <h3 class="text-lg font-semibold text-gray-800 mb-2">
           ⚠️ 单词验证结果（共 {{ wordValidationResults.length }} 个）
         </h3>

@@ -1,25 +1,20 @@
 <template>
-  <div class="space-y-6">
+  <div class="admin-settings-page mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold text-gray-800">系统设置</h1>
       <p class="text-gray-500 mt-1">配置系统参数和第三方服务</p>
-
     </div>
 
-
-
     <!-- 百度翻译API设置 -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
+    <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">百度翻译 API</h2>
-          <p class="text-sm text-gray-500 mt-1">用于自动获取单词中文释义（免费额度：100万字符/月）</p>
-
+          <p class="text-sm text-gray-500 mt-1">用于自动获取单词中文释义</p>
         </div>
-
         <span 
-          class="px-3 py-1 text-sm rounded-full"
+          class="admin-tag self-start px-3 py-1 text-sm rounded-full flex-shrink-0"
           :class="baiduConfig.configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
         >
           {{ baiduConfig.configured ? '已配置' : '未配置' }}
@@ -78,16 +73,14 @@
 
 
     <!-- DeepSeek API设置 -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
+    <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">DeepSeek API</h2>
-          <p class="text-sm text-gray-500 mt-1">用于补充生成英文例句（优先使用Dictionary API，仅在Dictionary API无例句时调用DeepSeek）</p>
-
+          <p class="text-sm text-gray-500 mt-1">用于补充生成英文例句</p>
         </div>
-
         <span 
-          class="px-3 py-1 text-sm rounded-full"
+          class="admin-tag self-start px-3 py-1 text-sm rounded-full flex-shrink-0"
           :class="deepseekConfigured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
         >
           {{ deepseekConfigured ? '已配置' : '未配置' }}

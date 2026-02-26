@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="admin-plans-page mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -121,51 +121,53 @@
           class="border rounded-lg p-4"
           :class="plan.status === 'paused' ? 'bg-gray-50' : 'bg-white'"
         >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
+          <!-- 计划名称 + 状态 -->
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
               <span class="text-lg font-medium text-gray-800">{{ getCategoryLabel(plan.category) }}</span>
               <span 
-                class="px-2 py-0.5 text-xs rounded-full"
+                class="admin-tag px-2 py-0.5 text-xs rounded-full"
                 :class="plan.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
               >
                 {{ plan.status === 'active' ? '进行中' : '已暂停' }}
               </span>
             </div>
-            <div class="flex items-center gap-2">
-              <!-- 优先级调整 -->
+            <!-- 优先级调整 -->
+            <div class="flex items-center gap-1">
               <button
                 @click="movePlanPriority(plan, -1)"
                 :disabled="index === 0"
-                class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                class="admin-action-btn p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
                 title="上移"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                 </svg>
               </button>
-              <span class="text-sm text-gray-500">优先级 {{ plan.priority }}</span>
+              <span class="text-xs text-gray-500">{{ plan.priority }}</span>
               <button
                 @click="movePlanPriority(plan, 1)"
                 :disabled="index === userPlans.length - 1"
-                class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                class="admin-action-btn p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
                 title="下移"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
             </div>
           </div>
 
-          <div class="mt-3 flex items-center gap-4">
+          <!-- 操作区域 - 垂直堆叠 -->
+          <div class="mt-3 flex flex-wrap items-center gap-2">
             <div class="flex items-center gap-2">
-              <label class="text-sm text-gray-600">每日新词:</label>
+              <label class="text-sm text-gray-600 whitespace-nowrap">每日新词:</label>
               <input
                 v-model.number="plan.daily_limit"
                 type="number"
                 min="1"
                 max="100"
-                class="w-20 px-2 py-1 border rounded text-center"
+                class="w-20 px-2 py-1 border rounded text-center text-sm"
                 @change="updatePlanDailyLimit(plan)"
               />
             </div>
@@ -173,21 +175,21 @@
             <button
               v-if="plan.status === 'active'"
               @click="pausePlan(plan)"
-              class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border rounded hover:bg-gray-50"
+              class="admin-action-btn px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border rounded hover:bg-gray-50"
             >
               暂停
             </button>
             <button
               v-else
               @click="resumePlan(plan)"
-              class="px-3 py-1 text-sm text-green-600 hover:text-green-800 border border-green-200 rounded hover:bg-green-50"
+              class="admin-action-btn px-3 py-1 text-sm text-green-600 hover:text-green-800 border border-green-200 rounded hover:bg-green-50"
             >
               恢复
             </button>
 
             <button
               @click="removePlan(plan)"
-              class="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-200 rounded hover:bg-red-50"
+              class="admin-action-btn px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-200 rounded hover:bg-red-50"
             >
               删除
             </button>
@@ -197,7 +199,75 @@
     </div>
 
     <!-- 用户学习计划总览 -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <!-- Mobile Card View -->
+    <div class="lg:hidden space-y-3">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="font-semibold text-gray-800">所有学生的学习计划</h2>
+      </div>
+      <div
+        v-for="plan in allUserPlans"
+        :key="plan.id"
+        class="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+              <span class="text-primary-700 text-sm font-medium">{{ plan.username?.charAt(0).toUpperCase() }}</span>
+            </div>
+            <span class="font-medium text-gray-800">{{ plan.username }}</span>
+          </div>
+          <button
+            @click="editUserPlans(plan)"
+            class="admin-action-btn p-1.5 text-gray-400 hover:text-primary-600 transition"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        </div>
+        <div class="flex flex-wrap gap-1 mb-2">
+          <span 
+            v-for="cat in plan.categories" 
+            :key="cat"
+            class="admin-tag px-2 py-0.5 text-xs rounded-full"
+            :class="getCategoryBadgeClass(cat)"
+          >
+            {{ getCategoryLabel(cat) }}
+          </span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-xs text-gray-500">
+          <div>
+            <span class="block text-gray-400">每日</span>
+            <span class="font-medium text-gray-700">{{ plan.total_daily_limit }} 词</span>
+          </div>
+          <div>
+            <span class="block text-gray-400">已学</span>
+            <span class="font-medium text-gray-700">{{ plan.total_words }}</span>
+          </div>
+          <div>
+            <span class="block text-gray-400">掌握</span>
+            <div class="flex items-center gap-1 mt-0.5">
+              <div class="flex-1 h-1.5 bg-gray-200 rounded-full">
+                <div class="h-full bg-green-500 rounded-full" :style="{ width: `${plan.mastered_rate}%` }"></div>
+              </div>
+              <span class="font-medium text-gray-700">{{ plan.mastered_rate }}%</span>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">
+          {{ plan.last_study_date ? '最近: ' + formatDate(plan.last_study_date) : '从未学习' }}
+        </p>
+      </div>
+      <div v-if="allUserPlans.length === 0" class="text-center py-12">
+        <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <p class="text-gray-500 text-sm">暂无学习计划</p>
+      </div>
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div class="p-4 border-b border-gray-200">
         <h2 class="font-semibold text-gray-800">所有学生的学习计划</h2>
       </div>

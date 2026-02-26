@@ -112,25 +112,25 @@
       </div>
 
       <!-- Main Content -->
-      <main class="flex-1 lg:ml-64 min-h-screen pb-20 lg:pb-0">
+      <main class="flex-1 lg:ml-64 min-h-screen mobile-content-pb lg:pb-0">
         <div class="p-4 lg:p-8">
           <router-view />
         </div>
       </main>
 
       <!-- Mobile Bottom Nav -->
-      <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 flex justify-around z-40">
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-1 py-2 flex justify-around z-40 mobile-nav-height pb-safe">
         <router-link
           v-for="item in mobileNavItems"
           :key="item.path"
           :to="item.path"
-          class="flex flex-col items-center py-2 px-3 text-xs"
+          class="flex flex-col items-center py-1.5 px-1 min-w-[60px]"
           :class="$route.path.includes(item.path) 
             ? 'text-primary-600' 
             : 'text-gray-500'"
         >
-          <component :is="item.icon" class="w-6 h-6 mb-1" />
-          {{ item.name }}
+          <component :is="item.icon" class="w-5 h-5 mb-0.5" />
+          <span class="text-[10px] leading-tight text-center">{{ item.name }}</span>
         </router-link>
       </nav>
     </div>

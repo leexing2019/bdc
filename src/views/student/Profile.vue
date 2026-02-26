@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 pb-20 lg:pb-0">
+  <div class="space-y-6 mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold text-gray-800">个人中心</h1>
@@ -22,7 +22,7 @@
 
     <!-- Stats -->
     <!-- 加载动画 -->
-    <div v-if="loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="bg-white rounded-xl p-4 shadow-sm text-center">
         <div class="flex flex-col items-center">
           <svg class="animate-spin h-8 w-8 text-primary-600 mb-2" fill="none" viewBox="0 0 24 24">
@@ -60,22 +60,22 @@
         </div>
       </div>
     </div>
-    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-        <p class="text-3xl font-bold text-primary-600">{{ totalWordsCount }}</p>
-        <p class="text-sm text-gray-500">总单词数</p>
+    <div v-else class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="bg-white rounded-xl p-3 shadow-sm text-center">
+        <p class="text-2xl font-bold text-primary-600">{{ totalWordsCount }}</p>
+        <p class="text-xs text-gray-500">总单词数</p>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-        <p class="text-3xl font-bold text-green-600">{{ wordStore.proficiencyStats.mastered }}</p>
-        <p class="text-sm text-gray-500">已掌握</p>
+      <div class="bg-white rounded-xl p-3 shadow-sm text-center">
+        <p class="text-2xl font-bold text-green-600">{{ wordStore.proficiencyStats.mastered }}</p>
+        <p class="text-xs text-gray-500">已掌握</p>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-        <p class="text-3xl font-bold text-blue-600">{{ wordStore.proficiencyStats.familiar }}</p>
-        <p class="text-sm text-gray-500">熟悉</p>
+      <div class="bg-white rounded-xl p-3 shadow-sm text-center">
+        <p class="text-2xl font-bold text-blue-600">{{ wordStore.proficiencyStats.familiar }}</p>
+        <p class="text-xs text-gray-500">熟悉</p>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-        <p class="text-3xl font-bold text-orange-600">{{ wordStore.proficiencyStats.learning }}</p>
-        <p class="text-sm text-gray-500">学习中</p>
+      <div class="bg-white rounded-xl p-3 shadow-sm text-center">
+        <p class="text-2xl font-bold text-orange-600">{{ wordStore.proficiencyStats.learning }}</p>
+        <p class="text-xs text-gray-500">学习中</p>
       </div>
     </div>
 

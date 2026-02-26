@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[calc(100vh-8rem)] pb-20 lg:pb-0">
+  <div class="min-h-[calc(100dvh-8rem)] mobile-content-pb lg:pb-0">
     <!-- 复习提示弹窗 -->
     <div v-if="showReviewPrompt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
@@ -24,8 +24,8 @@
     </div>
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">
+    <div class="flex items-center justify-between mb-3">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
         {{ isPreviewMode ? '预习' : '单词背诵' }}
       </h1>
       <!-- 模式指示器 -->
@@ -126,66 +126,66 @@
         ></div>
       </div>
 
-      <!-- Preview Card -->
-      <div v-if="!isPreviewComplete && previewWord" class="bg-white rounded-2xl shadow-lg p-8">
-        <div class="text-center">
-          <div class="text-sm text-gray-400 mb-4">
-            {{ previewIndex + 1 }} / {{ wordStore.todayWords.length }}
-          </div>
+    <!-- Preview Card -->
+    <div v-if="!isPreviewComplete && previewWord" class="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+      <div class="text-center">
+        <div class="text-sm text-gray-400 mb-4">
+          {{ previewIndex + 1 }} / {{ wordStore.todayWords.length }}
+        </div>
 
-          <!-- Word (front of card) -->
-          <div v-if="!previewShowAnswer" class="animate-fade-in">
+        <!-- Word (front of card) -->
+        <div v-if="!previewShowAnswer" class="animate-fade-in">
+          <button
+            @click="playPronunciation(previewWord?.spelling)"
+            class="w-14 h-14 sm:w-16 sm:h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 transition"
+            :disabled="isPlayingAudio"
+          >
+            <!-- Loading spinner -->
+            <svg v-if="isPlayingAudio" class="w-7 h-7 sm:w-8 sm:h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <!-- Speaker icon -->
+            <svg v-else class="w-7 h-7 sm:w-8 sm:h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          </button>
+          
+          <h2 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">{{ previewWord?.spelling }}</h2>
+          <p v-if="previewWord?.phonetic" class="text-gray-400 mb-4 sm:mb-6">{{ previewWord?.phonetic }}</p>
+          
+          <button
+            @click="previewShowAnswer = true"
+            class="px-6 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition text-sm sm:text-base"
+          >
+            点击查看释义
+          </button>
+        </div>
+
+        <!-- Meaning (back of card) -->
+        <div v-else class="animate-fade-in">
+          <p class="text-base sm:text-lg text-gray-600 mb-2">{{ previewWord?.part_of_speech }}</p>
+          <p class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6">{{ previewWord?.meaning }}</p>
+          
+          <p v-if="previewWord?.example_sentence" class="text-xs sm:text-sm text-gray-500 italic mb-4 sm:mb-6">
+            {{ previewWord?.example_sentence }}
+          </p>
+
+          <div class="flex justify-center space-x-3">
             <button
-              @click="playPronunciation(previewWord?.spelling)"
-              class="w-16 h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-6 transition"
-              :disabled="isPlayingAudio"
+              @click="previewShowAnswer = false"
+              class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm"
             >
-              <!-- Loading spinner -->
-              <svg v-if="isPlayingAudio" class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <!-- Speaker icon -->
-              <svg v-else class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              </svg>
+              返回
             </button>
-            
-            <h2 class="text-4xl font-bold text-gray-800 mb-2">{{ previewWord?.spelling }}</h2>
-            <p v-if="previewWord?.phonetic" class="text-gray-400 mb-6">{{ previewWord?.phonetic }}</p>
-            
             <button
-              @click="previewShowAnswer = true"
-              class="px-8 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition"
+              @click="nextPreviewWord"
+              class="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm"
             >
-              点击查看释义
+              下一个
             </button>
           </div>
-
-          <!-- Meaning (back of card) -->
-          <div v-else class="animate-fade-in">
-            <p class="text-lg text-gray-600 mb-2">{{ previewWord?.part_of_speech }}</p>
-            <p class="text-2xl font-semibold text-gray-800 mb-6">{{ previewWord?.meaning }}</p>
-            
-            <p v-if="previewWord?.example_sentence" class="text-sm text-gray-500 italic mb-6">
-              {{ previewWord?.example_sentence }}
-            </p>
-
-            <div class="flex justify-center space-x-4">
-              <button
-                @click="previewShowAnswer = false"
-                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                返回
-              </button>
-              <button
-                @click="nextPreviewWord"
-                class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-              >
-                下一个
-              </button>
-            </div>
-          </div>
+        </div>
         </div>
       </div>
 
@@ -245,82 +245,82 @@
       </div>
 
       <!-- Mode: Recall (识记模式) - 看英文说中文 -->
-      <div v-if="studyMode === 'recall'" class="bg-white rounded-2xl shadow-lg p-8">
+      <div v-if="studyMode === 'recall'" class="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
         <div class="text-center">
           <button
             @click="playPronunciation"
-            class="w-16 h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-6 transition"
+            class="w-14 h-14 sm:w-16 sm:h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 transition"
             :disabled="isPlayingAudio"
           >
             <!-- Loading spinner -->
-            <svg v-if="isPlayingAudio" class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg v-if="isPlayingAudio" class="w-7 h-7 sm:w-8 sm:h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <!-- Speaker icon -->
-            <svg v-else class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-else class="w-7 h-7 sm:w-8 sm:h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             </svg>
           </button>
           
-          <h2 class="text-4xl font-bold text-gray-800 mb-2">{{ currentWord?.spelling }}</h2>
+          <h2 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">{{ currentWord?.spelling }}</h2>
           <p v-if="currentWord?.phonetic" class="text-gray-400 mb-2">{{ currentWord?.phonetic }}</p>
-          <p v-if="currentWord?.part_of_speech" class="text-gray-500 mb-6">{{ currentWord?.part_of_speech }}</p>
+          <p v-if="currentWord?.part_of_speech" class="text-gray-500 mb-4 sm:mb-6">{{ currentWord?.part_of_speech }}</p>
           
           <button
             @click="showAnswer = true"
             v-if="!showAnswer"
-            class="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            class="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm sm:text-base"
           >
             显示答案
           </button>
           
-          <div v-else class="mt-6 animate-fade-in">
-            <p class="text-lg text-gray-600 mb-2">{{ currentWord?.part_of_speech }}</p>
-            <p class="text-2xl font-semibold text-gray-800 mb-6">{{ currentWord?.meaning }}</p>
+          <div v-else class="mt-4 sm:mt-6 animate-fade-in">
+            <p class="text-base sm:text-lg text-gray-600 mb-2">{{ currentWord?.part_of_speech }}</p>
+            <p class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6">{{ currentWord?.meaning }}</p>
             
-            <p v-if="currentWord?.example_sentence" class="text-sm text-gray-500 italic mb-6">
+            <p v-if="currentWord?.example_sentence" class="text-xs sm:text-sm text-gray-500 italic mb-4 sm:mb-6">
               {{ currentWord?.example_sentence }}
             </p>
           </div>
         </div>
         
         <!-- Action Buttons -->
-        <div v-if="showAnswer" class="mt-8">
-          <p class="text-center text-gray-500 mb-4">你对这个单词的掌握程度是？</p>
-          <div class="grid grid-cols-3 gap-4">
+        <div v-if="showAnswer" class="mt-6 sm:mt-8">
+          <p class="text-center text-gray-500 mb-4 text-sm">你对这个单词的掌握程度是？</p>
+          <div class="grid grid-cols-3 gap-2 sm:gap-4">
             <button
               @click="handleResponse(1)"
               :disabled="isTransitioning"
-              class="flex flex-col items-center p-4 bg-red-50 hover:bg-red-100 rounded-xl transition disabled:opacity-50"
+              class="flex flex-col items-center p-3 sm:p-4 bg-red-50 hover:bg-red-100 rounded-xl transition disabled:opacity-50"
             >
-              <span class="text-red-700 font-medium">不认识</span>
+              <span class="text-red-700 font-medium text-sm sm:text-base">不认识</span>
             </button>
             <button
               @click="handleResponse(3)"
               :disabled="isTransitioning"
-              class="flex flex-col items-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition disabled:opacity-50"
+              class="flex flex-col items-center p-3 sm:p-4 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition disabled:opacity-50"
             >
-              <span class="text-yellow-700 font-medium">模糊</span>
+              <span class="text-yellow-700 font-medium text-sm sm:text-base">模糊</span>
             </button>
             <button
               @click="handleResponse(5)"
               :disabled="isTransitioning"
-              class="flex flex-col items-center p-4 bg-green-50 hover:bg-green-100 rounded-xl transition disabled:opacity-50"
+              class="flex flex-col items-center p-3 sm:p-4 bg-green-50 hover:bg-green-100 rounded-xl transition disabled:opacity-50"
             >
-              <span class="text-green-700 font-medium">认识</span>
+              <span class="text-green-700 font-medium text-sm sm:text-base">认识</span>
             </button>
           </div>
         </div>
       </div>
 
       <!-- Mode: Dictation (默写模式) - 看中文默写英文 -->
-      <div v-else-if="studyMode === 'dictation'" class="bg-white rounded-2xl shadow-lg p-8">
+      <div v-else-if="studyMode === 'dictation'" class="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
         <div class="text-center">
           <p class="text-sm text-gray-500 mb-2">请默写出这个单词</p>
           
-          <div class="bg-gray-50 rounded-xl p-6 mb-6">
-            <p class="text-2xl font-semibold text-gray-800">{{ currentWord?.meaning }}</p>
+          <div class="bg-gray-50 rounded-xl p-4 sm:p-6 mb-4">
+            <p class="text-lg sm:text-2xl font-semibold text-gray-800">{{ currentWord?.meaning }}</p>
             <p v-if="currentWord?.phonetic" class="text-gray-400 mt-2">{{ currentWord?.phonetic }}</p>
           </div>
           
@@ -329,7 +329,7 @@
             v-model="dictationAnswer"
             type="text"
             @keyup.enter="checkDictation"
-            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-center text-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none mb-4"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-center text-lg sm:text-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none mb-4"
             placeholder="请输入英文单词"
             :disabled="dictationResult !== null"
           />

@@ -1,23 +1,23 @@
 <template>
-  <div class="space-y-6 pb-20 lg:pb-0">
+  <div class="space-y-6 mobile-content-pb lg:pb-0">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">导入单词</h1>
         <p class="text-gray-500 mt-1">上传文件或手动添加单词到你的个人词库</p>
       </div>
       <!-- DeepSeek API Key 设置 -->
-      <div class="flex items-center space-x-2">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full lg:w-auto">
         <input
           v-model="deepseekApiKey"
           type="password"
-          placeholder="DeepSeek API Key（可选，用于生成例句）"
-          class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          placeholder="DeepSeek API Key（可选）"
+          class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full sm:w-40 lg:w-48 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
         />
         <button
           @click="saveDeepseekApiKey"
           :disabled="testingApi"
-          class="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition text-sm disabled:opacity-50"
+          class="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition text-sm disabled:opacity-50 w-full sm:w-auto"
           :title="testingApi ? '测试中...' : '测试并保存API Key'"
         >
           <svg v-if="testingApi" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -91,53 +91,56 @@
     </div>
 
     <!-- Add Single Word Card -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">添加单个单词到个人词库</h2>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <h2 class="text-base font-semibold text-gray-800 mb-3">添加单个单词到个人词库</h2>
       
       <!-- 验证错误提示 -->
       <div v-if="validationError" class="text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg mb-3">
         {{ validationError }}
       </div>
       
-      <div class="flex items-center space-x-2">
+      <!-- 表单：移动端垂直排列，桌面端水平排列 -->
+      <div class="flex flex-col gap-2">
         <input
           v-model="newWord.spelling"
           @blur="newWord.spelling && validateWordSpellingOnly(newWord.spelling)"
           @input="onSpellingInput"
           placeholder="英文"
-          class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none w-full text-base"
           :class="{'border-orange-500': validationError}"
         />
-        <select
-          v-model="newWord.partOfSpeech"
-          @change="onPartOfSpeechChange"
-          class="w-32 px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
-        >
-          <option v-for="item in partOfSpeechOptions" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </option>
-        </select>
-        <div class="flex-1 relative">
-          <input
-            v-model="newWord.meaning"
-            placeholder="中文"
-            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-          />
-          <!-- 翻译按钮 -->
-          <button
-            v-if="newWord.spelling && newWord.partOfSpeech"
-            @click="handleTranslate"
-            :disabled="translating"
-            class="absolute right-1 top-1 bottom-1 px-2 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-50"
-            title="使用百度翻译获取中文释义"
+        <div class="flex gap-2">
+          <select
+            v-model="newWord.partOfSpeech"
+            @change="onPartOfSpeechChange"
+            class="w-28 px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white text-sm flex-shrink-0"
           >
-            {{ translating ? '翻译中...' : '翻译' }}
-          </button>
+            <option v-for="item in partOfSpeechOptions" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </option>
+          </select>
+          <div class="flex-1 relative">
+            <input
+              v-model="newWord.meaning"
+              placeholder="中文"
+              class="w-full px-3 py-2.5 pr-14 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-base"
+            />
+            <!-- 翻译按钮 -->
+            <button
+              v-if="newWord.spelling && newWord.partOfSpeech"
+              @click="handleTranslate"
+              :disabled="translating"
+              class="absolute right-1 top-1 bottom-1 px-2 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-50 whitespace-nowrap"
+              title="使用百度翻译获取中文释义"
+            >
+              {{ translating ? '翻译中...' : '翻译' }}
+            </button>
+          </div>
         </div>
         <button
           @click="addSingleWord"
           :disabled="addingWord || !newWord.spelling || !newWord.meaning"
-          class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center"
+          class="w-full px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center text-base"
         >
           <svg v-if="addingWord" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

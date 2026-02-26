@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="admin-stats-page mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold text-gray-800">数据统计</h1>
@@ -71,7 +71,47 @@
     </div>
 
     <!-- Recent Activity -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <!-- Mobile Card View -->
+    <div class="lg:hidden">
+      <div class="flex items-center justify-between px-1 mb-3">
+        <h3 class="font-semibold text-gray-800">最近学习记录</h3>
+      </div>
+      <div class="space-y-2">
+        <div
+          v-for="log in recentLogs"
+          :key="log.id"
+          class="bg-white rounded-xl p-3 shadow-sm border border-gray-100"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
+              <span class="text-primary-700 text-xs font-medium">{{ log.username?.charAt(0).toUpperCase() }}</span>
+            </div>
+            <span class="font-medium text-gray-800 text-sm">{{ log.username }}</span>
+            <span class="ml-auto text-xs text-gray-400">{{ formatDate(log.date) }}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div class="bg-blue-50 rounded-lg px-2 py-1.5 text-center">
+              <span class="block text-blue-400">新词</span>
+              <span class="font-medium text-blue-700">{{ log.new_words_learned }}</span>
+            </div>
+            <div class="bg-green-50 rounded-lg px-2 py-1.5 text-center">
+              <span class="block text-green-400">复习</span>
+              <span class="font-medium text-green-700">{{ log.words_reviewed }}</span>
+            </div>
+            <div class="bg-purple-50 rounded-lg px-2 py-1.5 text-center">
+              <span class="block text-purple-400">时长</span>
+              <span class="font-medium text-purple-700">{{ log.duration_minutes }}分</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="recentLogs.length === 0" class="text-center py-12">
+        <p class="text-gray-500 text-sm">暂无学习记录</p>
+      </div>
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div class="p-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">最近学习记录</h3>
       </div>

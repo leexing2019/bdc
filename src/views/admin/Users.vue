@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="mobile-content-pb lg:pb-0">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -8,7 +8,7 @@
       </div>
       <button
         @click="showAddModal = true"
-        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center justify-center"
+        class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center justify-center"
       >
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -31,7 +31,7 @@
     <!-- 实际内容 -->
     <template v-else>
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <p class="text-sm text-gray-500">总用户数</p>
         <p class="text-2xl font-bold text-gray-800">{{ users.length }}</p>
@@ -52,13 +52,13 @@
 
     <!-- Search & Filter -->
     <div class="bg-white rounded-xl p-4 shadow-sm">
-      <div class="flex flex-col lg:flex-row gap-4">
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <div class="flex-1 relative">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="搜索用户名..."
-            class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            class="w-full pl-10 pr-4 py-3 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
           <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -66,7 +66,7 @@
         </div>
         <select
           v-model="filterStatus"
-          class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          class="w-full sm:w-auto px-4 py-3 sm:py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
         >
           <option value="all">全部状态</option>
           <option value="active">活跃</option>
@@ -75,8 +75,95 @@
       </div>
     </div>
 
+    <!-- 移动端用户卡片列表 -->
+    <div class="lg:hidden space-y-3">
+      <div
+        v-for="user in filteredUsers"
+        :key="user.id"
+        class="bg-white rounded-xl p-4 shadow-sm"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
+              <span class="text-primary-700 font-medium">{{ user.username.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div>
+              <p class="font-medium text-gray-800">{{ user.username }}</p>
+              <p class="text-xs text-gray-500">{{ formatDate(user.created_at) }}</p>
+            </div>
+          </div>
+          <span
+            class="px-2 py-1 text-xs rounded-full"
+            :class="user.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+          >
+            {{ user.is_active ? '活跃' : '未激活' }}
+          </span>
+        </div>
+        
+        <div class="mb-3">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm text-gray-500">学习进度</span>
+            <span class="text-sm font-medium text-gray-700">{{ getProgress(user.id) }}%</span>
+          </div>
+          <div class="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              class="h-full bg-green-500 rounded-full"
+              :style="{ width: getProgress(user.id) + '%' }"
+            ></div>
+          </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-2">
+          <button
+            @click="resetPassword(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition flex items-center justify-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+            重置
+          </button>
+          <button
+            @click="editUser(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition flex items-center justify-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            编辑
+          </button>
+          <button
+            @click="toggleUserStatus(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs rounded-lg transition flex items-center justify-center gap-1"
+            :class="user.is_active ? 'text-red-600 bg-red-50 hover:bg-red-100' : 'text-green-600 bg-green-50 hover:bg-green-100'"
+          >
+            <svg v-if="user.is_active" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {{ user.is_active ? '禁用' : '激活' }}
+          </button>
+          <button
+            @click="viewUserWords(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition flex items-center justify-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+            单词
+          </button>
+          <button
+            @click="manageLearningPlans(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition flex items-center justify-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            计划
+          </button>
+          <button
+            @click="deleteUser(user)"
+            class="flex-1 min-w-[70px] px-2 py-2 text-xs text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            删除
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Users Table -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50">

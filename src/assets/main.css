@@ -89,3 +89,144 @@ body {
 .pulse {
   animation: pulse 2s infinite;
 }
+
+/* 移动端安全区域支持 - 用于底部导航栏 */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+.pb-safe-large {
+  padding-bottom: calc(env(safe-area-inset-bottom, 30px) + 30px);
+}
+
+/* 移动端底部导航栏高度修正 */
+.mobile-nav-height {
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 确保内容不被底部导航遮挡 - 移动端 */
+.mobile-content-pb {
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 20px));
+}
+
+@media (max-width: 1023px) {
+  .mobile-content-pb {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+  }
+}
+
+/* iPhone 14 Pro Max (430px 宽度) 适配 */
+@media only screen and (max-width: 440px) {
+  .mobile-content-pb {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 40px)) !important;
+  }
+  
+  /* 减小标题字体 */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  /* 优化卡片间距 */
+  .space-y-6 {
+    gap: 1rem !important;
+  }
+  
+  /* 确保网格布局适配小屏幕 */
+  .grid {
+    gap: 0.75rem !important;
+  }
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* 移动端优化 */
+@media (max-width: 1023px) {
+  .container {
+    max-width: 100vw;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  
+  /* 增加触摸目标尺寸（排除单词卡片内的小按钮和标签） */
+  button:not(.word-action-btn):not(.word-tag), a:not(.word-tag) {
+    min-height: 44px;
+  }
+}
+
+/* 单词卡片内按钮和标签不受全局最小高度限制 */
+.word-action-btn {
+  min-height: auto !important;
+  height: auto !important;
+}
+.word-tag {
+  min-height: auto !important;
+  height: auto !important;
+}
+.word-checkbox {
+  min-height: auto !important;
+  height: auto !important;
+}
+/* 单词本页面内所有按钮都不受全局 min-height 限制 */
+.wordlist-page button {
+  min-height: auto !important;
+}
+.wordlist-page span {
+  min-height: auto !important;
+}
+.wordlist-page input[type="checkbox"] {
+  min-height: auto !important;
+}
+
+/* 单词本页面 filter tabs 滚动条样式 */
+.filter-tabs-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.filter-tabs-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+.filter-tabs-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+/* 管理端页面内所有小按钮和标签不受全局 min-height 限制 */
+.admin-words-page button,
+.admin-words-page span,
+.admin-words-page input[type="checkbox"],
+.admin-plans-page button,
+.admin-plans-page span,
+.admin-plans-page input[type="checkbox"],
+.admin-stats-page button,
+.admin-stats-page span,
+.admin-settings-page button,
+.admin-settings-page span {
+  min-height: auto !important;
+}
+.admin-action-btn,
+.admin-tag,
+.admin-checkbox {
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* 超小屏幕优化 (iPhone SE 等) */
+@media only screen and (max-width: 375px) {
+  .mobile-content-pb {
+    padding-bottom: calc(95px + env(safe-area-inset-bottom, 40px)) !important;
+  }
+  
+  /* 进一步减小字体 */
+  .text-2xl {
+    font-size: 1.25rem !important;
+  }
+  
+  /* 卡片内边距减小 */
+  .p-6, .p-8 {
+    padding: 1rem !important;
+  }
+}

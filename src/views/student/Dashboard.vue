@@ -1,13 +1,13 @@
 <template>
-  <div class="space-y-6 pb-20 lg:pb-0">
+  <div class="space-y-6 mobile-content-pb lg:pb-0">
     <!-- Header -->
-    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-6 text-white">
-      <h1 class="text-2xl font-bold mb-2">欢迎回来，{{ authStore.user?.username }}！</h1>
-      <p class="text-primary-100">今天也要坚持背单词哦~</p>
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-4 sm:p-6 text-white">
+      <h1 class="text-lg sm:text-2xl font-bold mb-1 sm:mb-2">欢迎回来，{{ authStore.user?.username }}！</h1>
+      <p class="text-primary-100 text-sm sm:text-base">今天也要坚持背单词哦~</p>
     </div>
 
     <!-- Learning Plan Info -->
-    <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-primary-500">
+    <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border-l-4 border-primary-500">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm text-gray-500">当前学习计划</p>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Today's Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div>
@@ -140,14 +140,14 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
+    <div class="bg-white rounded-xl p-4 shadow-sm">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">开始学习</h2>
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-2 gap-3">
         <router-link
           to="/student/study"
-          class="flex flex-col items-center p-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl text-white hover:from-primary-600 hover:to-primary-700 transition transform hover:scale-105"
+          class="flex flex-col items-center p-4 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl text-white hover:from-primary-600 hover:to-primary-700 transition transform hover:scale-105"
         >
-          <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -157,9 +157,9 @@
 
         <router-link
           to="/student/import"
-          class="flex flex-col items-center p-6 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white hover:from-green-600 hover:to-green-700 transition transform hover:scale-105"
+          class="flex flex-col items-center p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white hover:from-green-600 hover:to-green-700 transition transform hover:scale-105"
         >
-          <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
           <span class="font-semibold">导入单词</span>
@@ -169,22 +169,22 @@
     </div>
 
     <!-- Weekly Progress -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">本周进度</h2>
-      <div class="flex items-end justify-between h-32">
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <h2 class="text-base font-semibold text-gray-800 mb-3">本周进度</h2>
+      <div class="flex items-end justify-between h-28">
         <div
           v-for="day in wordStore.weeklyStats"
           :key="day.date"
           class="flex flex-col items-center flex-1"
         >
-          <div class="w-full flex items-end justify-center h-24 space-x-1">
+          <div class="w-full flex items-end justify-center h-20 space-x-0.5">
             <div
-              class="w-6 lg:w-8 rounded-t transition-all duration-300"
+              class="w-5 sm:w-6 lg:w-8 rounded-t transition-all duration-300"
               :class="day.completed ? 'bg-primary-500' : 'bg-gray-200'"
               :style="{ height: day.count > 0 ? `${Math.min(day.count * 10, 100)}%` : '4px' }"
             ></div>
           </div>
-          <span class="text-xs text-gray-500 mt-2">{{ day.day }}</span>
+          <span class="text-[10px] sm:text-xs text-gray-500 mt-1.5">{{ day.day }}</span>
         </div>
       </div>
       <div class="flex items-center justify-center mt-4 space-x-4">
@@ -200,29 +200,29 @@
     </div>
 
     <!-- Proficiency Distribution -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">词汇掌握情况</h2>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <h2 class="text-base font-semibold text-gray-800 mb-3">词汇掌握情况</h2>
       <div class="flex items-center justify-center">
-        <div class="relative w-40 h-40">
+        <div class="relative w-32 h-32 sm:w-40 sm:h-40">
           <canvas ref="chartCanvas"></canvas>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-4 mt-4">
+      <div class="grid grid-cols-2 gap-2 sm:gap-4 mt-3">
         <div class="flex items-center">
-          <div class="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-          <span class="text-sm text-gray-600">新词 {{ wordStore.proficiencyStats.new }}</span>
+          <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-400 rounded-full mr-1.5 sm:mr-2"></div>
+          <span class="text-xs sm:text-sm text-gray-600">新词 {{ wordStore.proficiencyStats.new }}</span>
         </div>
         <div class="flex items-center">
-          <div class="w-3 h-3 bg-orange-400 rounded-full mr-2"></div>
-          <span class="text-sm text-gray-600">学习中 {{ wordStore.proficiencyStats.learning }}</span>
+          <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-orange-400 rounded-full mr-1.5 sm:mr-2"></div>
+          <span class="text-xs sm:text-sm text-gray-600">学习中 {{ wordStore.proficiencyStats.learning }}</span>
         </div>
         <div class="flex items-center">
-          <div class="w-3 h-3 bg-blue-400 rounded-full mr-2"></div>
-          <span class="text-sm text-gray-600">熟悉 {{ wordStore.proficiencyStats.familiar }}</span>
+          <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-400 rounded-full mr-1.5 sm:mr-2"></div>
+          <span class="text-xs sm:text-sm text-gray-600">熟悉 {{ wordStore.proficiencyStats.familiar }}</span>
         </div>
         <div class="flex items-center">
-          <div class="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-          <span class="text-sm text-gray-600">掌握 {{ wordStore.proficiencyStats.mastered }}</span>
+          <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-400 rounded-full mr-1.5 sm:mr-2"></div>
+          <span class="text-xs sm:text-sm text-gray-600">掌握 {{ wordStore.proficiencyStats.mastered }}</span>
         </div>
       </div>
     </div>

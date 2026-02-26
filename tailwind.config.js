@@ -22,6 +22,9 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      padding: {
+        'safe': 'env(safe-area-inset-bottom, 20px)',
       }
     },
   },
