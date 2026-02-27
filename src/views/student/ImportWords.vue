@@ -127,14 +127,14 @@
         </div>
         <button
           @click="addSingleWord"
-          :disabled="addingWord || !newWord.spelling || !newWord.meaning"
+          :disabled="addingWord || translating || !newWord.spelling || !newWord.meaning"
           class="w-full px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center justify-center text-base"
         >
-          <svg v-if="addingWord" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+          <svg v-if="addingWord || translating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ addingWord ? '添加中' : '直接添加' }}
+          {{ translating ? '获取中...' : (addingWord ? '添加中' : '直接添加') }}
         </button>
       </div>
       
@@ -633,6 +633,7 @@ const promptApiKey = ref('')
 const noMorePrompt = ref(localStorage.getItem('smartmemo_no_deepseek_prompt') === 'true')
 const pendingWords = ref([])  // 等待API Key的单词列表
 const currentPromptWordIndex = ref(0)  // 当前处理的单词索引
+const isSingleWordImport = ref(false)  // 是否是单个单词导入模式
 
 // 从本地存储获取API Key
 const deepseekApiKey = ref(localStorage.getItem('smartmemo_deepseek_key') || '')
@@ -990,7 +991,7 @@ const saveApiKeyAndContinue = async () => {
     submitting.value = true
     
     // 继续处理剩余单词
-    await continueValidationWithApi()
+    if (pendingWords.value.length > 0) { await continueValidationWithApi() } else if (newWord.value.spelling && newWord.value.partOfSpeech) { await onPartOfSpeechChange() }
     
   } catch (error) {
     console.error('保存 API Key 失败:', error)
@@ -1036,7 +1037,7 @@ const ignorePrompt = async () => {
   // 设置提交状态为true保持按钮禁用，直到验证完成
   submitting.value = true
   // 不使用API Key继续验证
-  await continueValidationWithoutApi()
+  if (pendingWords.value.length > 0) { await continueValidationWithoutApi() }
 }
 
 // 不使用API Key继续验证
@@ -1094,7 +1095,7 @@ const validateWord = async (spelling) => {
     // 注意：API返回的是example而非examples
     if (wordData?.example) {
       currentExample.value = {
-        source: 'Dictionary API',
+        source: wordData.exampleSource === 'deepseek' ? 'DeepSeek' : 'Dictionary API',
         sentence: wordData.example,
         translation: ''
       }
@@ -1229,7 +1230,7 @@ const onPartOfSpeechChange = async () => {
     // 优先从Dictionary API获取例句
     if (wordData?.example) {
       currentExample.value = {
-        source: 'Dictionary API',
+        source: wordData.exampleSource === 'deepseek' ? 'DeepSeek' : 'Dictionary API',
         sentence: wordData.example,
         translation: ''
       }
@@ -1926,4 +1927,9 @@ watch(showDeepseekPrompt, (newVal, oldVal) => {
   }
 })
 </script>
+
+
+
+
+
 

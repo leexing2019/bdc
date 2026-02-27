@@ -8,6 +8,7 @@
       </div>
     </div>
 
+
     <!-- Filter Tabs - 使用 flex-wrap 换行显示所有标签 -->
     <div class="flex flex-wrap gap-2">
       <button
@@ -23,6 +24,7 @@
         <span class="ml-0.5 text-xs opacity-75">({{ getTabCount(tab.value) }})</span>
       </button>
     </div>
+
 
     <!-- Search & Batch Actions -->
     <div class="space-y-2">
@@ -49,6 +51,7 @@
         <span class="truncate">删除选中 ({{ selectedWords.length }})</span>
       </button>
     </div>
+
 
     <!-- Word List -->
     <!-- 加载动画 -->
@@ -108,7 +111,7 @@
         <!-- 第四行：操作按钮 -->
         <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
           <button
-            @click.stop="playWord(word.spelling)"
+            @click.stop="playWord(word)"
             class="word-action-btn flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-md transition"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,6 +142,7 @@
         </div>
       </div>
 
+
       <!-- Empty State -->
       <div v-if="filteredWords.length === 0" class="text-center py-16">
         <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,6 +151,7 @@
         <p class="text-sm text-gray-500">暂无单词</p>
       </div>
     </div>
+
 
     <!-- Word Detail Modal -->
     <div v-if="selectedWord" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" @click="selectedWord = null">
@@ -193,9 +198,10 @@
           </div>
         </div>
 
+
         <div class="mt-4 flex space-x-2">
           <button
-@click="playWord(selectedWord.spelling)"
+            @click="playWord(selectedWord)"
             class="flex-1 flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
           >
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,6 +218,7 @@
         </div>
       </div>
     </div>
+
 
     <!-- Edit Word Modal -->
     <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" @click="showEditModal = false">
@@ -264,6 +271,7 @@
           </div>
         </div>
 
+
         <div class="mt-4 flex space-x-2">
           <button
             @click="showEditModal = false"
@@ -288,7 +296,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useWordStore } from '@/stores/words'
 import { supabase } from '@/lib/supabase'
 
+
 const wordStore = useWordStore()
+
 
 const activeTab = ref('all')
 const searchQuery = ref('')
@@ -308,10 +318,12 @@ onMounted(async () => {
   loading.value = false
 })
 
+
 // 切换标签时清除选择
 watch(() => activeTab.value, () => {
   selectedWords.value = []
 })
+
 
 const tabs = [
   { label: '全部', value: 'all' },
@@ -323,12 +335,14 @@ const tabs = [
   { label: '掌握', value: 'mastered' }
 ]
 
+
 const getTabCount = (tab) => {
   if (tab === 'all') return wordStore.words.length
   if (tab === 'institution') return wordStore.words.filter(w => w.source === 'institution').length
   if (tab === 'custom') return wordStore.words.filter(w => w.source === 'custom').length
   return wordStore.proficiencyStats[tab] || 0
 }
+
 
 const filteredWords = computed(() => {
   let words = [...wordStore.words]
@@ -362,6 +376,7 @@ const filteredWords = computed(() => {
   return words
 })
 
+
 const getProficiencyClass = (word) => {
   const progress = wordStore.userProgress.find(p => p.word_id === word.id)
   if (!progress || progress.repetitions === 0) return 'bg-gray-100 text-gray-600'
@@ -369,6 +384,7 @@ const getProficiencyClass = (word) => {
   if (progress.proficiency < 5) return 'bg-blue-100 text-blue-700'
   return 'bg-green-100 text-green-700'
 }
+
 
 const getProficiencyLabel = (word) => {
   const progress = wordStore.userProgress.find(p => p.word_id === word.id)
@@ -378,21 +394,27 @@ const getProficiencyLabel = (word) => {
   return '已掌握'
 }
 
+
 const playWord = async (word) => {
+  // 支持传入单词对象，优先使用数据库中存储的音频URL
+  const wordText = word.spelling
+  const audioUrl = word.audio_url
+  
   // 优先使用数据库中存储的音频URL
-  if (word.audio_url) {
-    const audio = new Audio(word.audio_url)
+  if (audioUrl) {
+    const audio = new Audio(audioUrl)
     audio.play().catch(e => {
       console.error('Audio play failed:', e)
       // 播放失败则使用浏览器TTS
-      speakWithBrowser(word.spelling)
+      speakWithBrowser(wordText)
     })
     return
   }
   
   // 没有数据库音频，使用浏览器TTS
-  speakWithBrowser(word.spelling)
+  speakWithBrowser(wordText)
 }
+
 
 const speakWithBrowser = (word) => {
   const utterance = new SpeechSynthesisUtterance(word)
@@ -401,10 +423,12 @@ const speakWithBrowser = (word) => {
   speechSynthesis.speak(utterance)
 }
 
+
 const openEditModal = (word) => {
   editingWord.value = { ...word }
   showEditModal.value = true
 }
+
 
 const saveEditWord = async () => {
   try {
@@ -428,6 +452,7 @@ const saveEditWord = async () => {
     alert('更新失败，请重试')
   }
 }
+
 
 const deleteWord = async (word) => {
   if (!confirm(`确定要删除单词 "${word.spelling}" 吗？`)) {
@@ -457,6 +482,7 @@ const deleteWord = async (word) => {
     alert('删除失败，请重试')
   }
 }
+
 
 // 批量删除单词
 const batchDeleteWords = async () => {

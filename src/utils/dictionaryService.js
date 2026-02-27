@@ -168,11 +168,12 @@ function normalizePartOfSpeech(pos) {
  * @param {string} word - The word to look up
  * @param {string} deepseekApiKey - Optional DeepSeek API key for example generation
  * @param {string} partOfSpeech - Optional part of speech to match (e.g., 'vi.', 'vt.', 'n.')
- * @returns {Promise<{definition: string|null, example: string|null, phonetic: string|null, audio: string|null}>}
+ * @returns {Promise<{definition: string|null, example: string|null, phonetic: string|null, audio: string|null, exampleSource: string|null>}
+ *          exampleSource can be: 'dictionary' | 'deepseek' | null
  */
 export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = null) {
   if (!word || !word.trim()) {
-    return { definition: null, example: null, phonetic: null, audio: null }
+    return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
   }
 
   // 清理单词：移除空格、下划线等，只保留纯单词
@@ -199,9 +200,9 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       if (deepseekApiKey) {
         // 使用原始输入词生成例句，带上词性信息
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null, audio: null }
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
       }
-      return { definition: null, example: null, phonetic: null, audio: null }
+      return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
     }
 
     const data = await response.json()
@@ -210,9 +211,9 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       // No data returned
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null, audio: null }
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
       }
-      return { definition: null, example: null, phonetic: null, audio: null }
+      return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
     }
 
     const wordData = data[0]
@@ -258,17 +259,20 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
           for (const def of definitions) {
             if (def.definition) {
               let example = def.example || null
+              let exampleSource = example ? 'dictionary' : null
               
               // If no example from Dictionary API, try DeepSeek
               if (!example && deepseekApiKey) {
                 example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
+                exampleSource = example ? 'deepseek' : null
               }
               
               return {
                 definition: def.definition,
                 example: example,
                 phonetic: phonetic,
-                audio: audio
+                audio: audio,
+                exampleSource: exampleSource
               }
             }
           }
@@ -283,17 +287,20 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
       for (const def of definitions) {
         if (def.definition) {
           let example = def.example || null
+          let exampleSource = example ? 'dictionary' : null
           
           // If no example from Dictionary API, try DeepSeek
           if (!example && deepseekApiKey) {
             example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
+            exampleSource = example ? 'deepseek' : null
           }
           
           return {
             definition: def.definition,
             example: example,
             phonetic: phonetic,
-            audio: audio
+            audio: audio,
+            exampleSource: exampleSource
           }
         }
       }
@@ -302,22 +309,22 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
     // No definition found, try DeepSeek for example
     if (deepseekApiKey) {
       const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-      return { definition: null, example: example, phonetic: phonetic, audio: audio }
+      return { definition: null, example: example, phonetic: phonetic, audio: audio, exampleSource: example ? 'deepseek' : null }
     }
 
-    return { definition: null, example: null, phonetic: phonetic, audio: audio }
+    return { definition: null, example: null, phonetic: phonetic, audio: audio, exampleSource: null }
   } catch (error) {
     console.error('Dictionary API error:', error.message)
     // Try DeepSeek as fallback on error (网络错误、CORS错误等)
     try {
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
-        return { definition: null, example: example, phonetic: null, audio: null }
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
       }
     } catch (deepseekError) {
       console.error('DeepSeek fallback also failed:', deepseekError.message)
     }
-    return { definition: null, example: null, phonetic: null, audio: null }
+    return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
   }
 }
 

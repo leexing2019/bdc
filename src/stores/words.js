@@ -133,7 +133,8 @@ export const useWordStore = defineStore('words', () => {
       const userCategory = userSettings?.category
       
       // 查询1：获取公共词库单词 - 使用supabaseAdmin确保查询不受RLS影响
-      // 只有当用户有特定词库分配时才加载（不是'all'也不是null）
+      // 教师布置的单词：category不是'custom'的所有单词
+      // 如果用户有特定词库分配(category)，只加载该词库
       let commonQuery = supabaseAdmin
         .from('words')
         .select('*')
@@ -141,12 +142,9 @@ export const useWordStore = defineStore('words', () => {
         .order('created_at', { ascending: false })
       
       // 如果用户有特定的词库分配，只加载该词库
-      // 如果category是'all'或者null/undefined，说明没有分配具体词库，不加载教师分配的单词
+      // 如果category是'all'或者null/undefined，说明没有分配具体词库，加载所有教师布置的单词
       if (userCategory && userCategory !== 'all' && userCategory !== null) {
         commonQuery = commonQuery.eq('category', userCategory)
-      } else {
-        // 没有分配具体词库时，只返回空结果（使用无效UUID）
-        commonQuery = commonQuery.eq('id', '00000000-0000-0000-0000-000000000000')
       }
       
       const { data: commonWords, error: commonError } = await commonQuery
@@ -1041,6 +1039,47 @@ export const useWordStore = defineStore('words', () => {
           isNew: true,
           planCategory: category // 标记来自哪个学习计划
         })))
+      }
+    }
+
+    // 检查是否需要添加个人词库的新词（当user_settings中有custom_daily_limit但user_learning_plans中没有custom计划时）
+    const hasCustomPlan = categories.includes('custom')
+    if (!hasCustomPlan) {
+      // 获取用户设置中的个人词库每日限制
+      const { data: userSettings } = await supabaseAdmin
+        .from('user_settings')
+        .select('custom_daily_limit')
+        .eq('user_id', authStore.user.id)
+        .maybeSingle()
+      
+      const customDailyLimit = userSettings?.custom_daily_limit || 0
+      
+      if (customDailyLimit > 0) {
+        // 获取个人词库新词
+        let customNewWordsQuery = supabase
+          .from('words')
+          .select('*')
+          .eq('category', 'custom')
+          .eq('created_by', authStore.user.id)
+          .order('created_at', { ascending: false })
+        
+        // 排除已学习的个人单词
+        const customLearnedIds = categoryLearnedMap['custom'] || new Set()
+        if (customLearnedIds.size > 0) {
+          customNewWordsQuery = customNewWordsQuery.not('id', 'in', `(${Array.from(customLearnedIds).join(',')})`)
+        }
+        
+        const { data: customNewWords } = await customNewWordsQuery.limit(customDailyLimit)
+        
+        if (customNewWords?.length) {
+          resultWords.push(...customNewWords.map(w => ({
+            ...w,
+            source: 'custom',
+            progress: null,
+            isNew: true,
+            planCategory: 'custom' // 标记来自个人词库
+          })))
+        }
       }
     }
 
