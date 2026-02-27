@@ -131,25 +131,26 @@ export const useWordStore = defineStore('words', () => {
         .maybeSingle()
       
       const userCategory = userSettings?.category
-      
+
       // 查询1：获取公共词库单词 - 使用supabaseAdmin确保查询不受RLS影响
       // 教师布置的单词：category不是'custom'的所有单词
-      // 如果用户有特定词库分配(category)，只加载该词库
-      let commonQuery = supabaseAdmin
-        .from('words')
-        .select('*')
-        .neq('category', 'custom')
-        .order('created_at', { ascending: false })
-      
-      // 如果用户有特定的词库分配，只加载该词库
-      // 如果category是'all'或者null/undefined，说明没有分配具体词库，加载所有教师布置的单词
+      // 只有当用户被分配了具体词库(category存在且不是'all'和null)时才加载，否则不加载任何公共词库单词
+      let commonWords = []
       if (userCategory && userCategory !== 'all' && userCategory !== null) {
-        commonQuery = commonQuery.eq('category', userCategory)
-      }
-      
-      const { data: commonWords, error: commonError } = await commonQuery
+        let commonQuery = supabaseAdmin
+          .from('words')
+          .select('*')
+          .neq('category', 'custom')
+          .order('created_at', { ascending: false })
 
-      if (commonError) throw commonError
+        // 如果用户有特定的词库分配，只加载该词库
+        commonQuery = commonQuery.eq('category', userCategory)
+
+        const { data: wordsData, error: commonError } = await commonQuery
+        if (commonError) throw commonError
+        commonWords = wordsData || []
+      }
+      // 如果没有分配具体词库，commonWords保持为空数组，不加载任何公共词库单词
       
       // 查询2：获取用户自己添加的单词（custom分类且created_by = 当前用户）- 使用supabaseAdmin绕过RLS
       const { data: customWords, error: customError } = await supabaseAdmin
