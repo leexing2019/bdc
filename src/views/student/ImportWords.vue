@@ -1349,11 +1349,33 @@ const processFile = async (file) => {
 
 
 const parseTxt = (text) => {
-  const lines = text.split('\n').filter(line => line.trim())
+  // Remove BOM if present
+  let cleanText = text
+  if (text.charCodeAt(0) === 0xFEFF) {
+    cleanText = text.substring(1)
+  }
+
+  // Normalize line endings (handle both Windows \r\n and Unix \n)
+  const normalizedText = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
+  const lines = normalizedText.split('\n').filter(line => line.trim())
   const words = []
-  
-  for (const line of lines) {
-    const parts = line.split('|')
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+
+    // Try to split by | (English pipe)
+    let parts = line.split('|')
+
+    // If that doesn't work (only 1 part), try Chinese full-width separator or tab
+    if (parts.length < 2) {
+      parts = line.split('｜') // Full-width pipe (Chinese)
+    }
+    if (parts.length < 2) {
+      parts = line.split('\t') // Tab
+    }
+
     if (parts.length >= 3) {
       words.push({
         spelling: parts[0].trim(),
@@ -1368,7 +1390,7 @@ const parseTxt = (text) => {
       })
     }
   }
-  
+
   parsedWords.value = words
 }
 
