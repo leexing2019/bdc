@@ -132,11 +132,36 @@ export const useWordStore = defineStore('words', () => {
       
       const userCategory = userSettings?.category
 
+      // 同时获取用户的学习计划（从user_learning_plans获取分配的词库）
+      const { data: learningPlans } = await supabaseAdmin
+        .from('user_learning_plans')
+        .select('category')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+      
+      // 获取所有已激活的词库分类
+      const assignedCategories = learningPlans?.map(p => p.category).filter(Boolean) || []
+
       // 查询1：获取公共词库单词 - 使用supabaseAdmin确保查询不受RLS影响
       // 教师布置的单词：category不是'custom'的所有单词
-      // 只有当用户被分配了具体词库(category存在且不是'all'和null)时才加载，否则不加载任何公共词库单词
+      // 只有当用户被分配了具体词库时才加载，否则不加载任何公共词库单词
       let commonWords = []
-      if (userCategory && userCategory !== 'all' && userCategory !== null) {
+      if (assignedCategories.length > 0) {
+        // 用户有学习计划，按学习计划中的词库加载
+        let commonQuery = supabaseAdmin
+          .from('words')
+          .select('*')
+          .neq('category', 'custom')
+          .order('created_at', { ascending: false })
+
+        // 只加载学习计划中包含的词库
+        commonQuery = commonQuery.in('category', assignedCategories)
+
+        const { data: wordsData, error: commonError } = await commonQuery
+        if (commonError) throw commonError
+        commonWords = wordsData || []
+      } else if (userCategory && userCategory !== 'all' && userCategory !== null) {
+        // 兼容旧逻辑：如果user_settings有category设置，也加载
         let commonQuery = supabaseAdmin
           .from('words')
           .select('*')

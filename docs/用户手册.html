@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Memo 智忆单词学习系统用户手册</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: "Noto Sans SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
+            font-size: 11pt;
+            line-height: 1.7;
+            color: #1f2937;
+        }
+
+        @page {
+            size: A4;
+            margin: 2.4cm 1.9cm;
+        }
+
+        @page :first {
+            margin: 0;
+        }
+
+        .cover-page {
+            page: cover;
+            width: 210mm;
+            height: 297mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .cover-page h1 {
+            font-size: 36pt;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+        }
+
+        .cover-page .subtitle {
+            font-size: 18pt;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .cover-page .version {
+            font-size: 12pt;
+            opacity: 0.7;
+            margin-top: 60px;
+        }
+
+        body {
+            text-align: justify;
+            text-align-last: start;
+        }
+
+        h1 {
+            font-size: 20pt;
+            color: #1e40af;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            break-after: avoid;
+        }
+
+        h2 {
+            font-size: 16pt;
+            color: #1e3a8a;
+            border-bottom: 1px solid #93c5fd;
+            padding-bottom: 6px;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            break-after: avoid;
+        }
+
+        h3 {
+            font-size: 13pt;
+            color: #1e3a8a;
+            margin-top: 16px;
+            margin-bottom: 10px;
+            break-after: avoid;
+        }
+
+        p {
+            margin: 10px 0;
+            text-indent: 0;
+        }
+
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 24px;
+        }
+
+        li {
+            margin: 6px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 10pt;
+            break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 9pt;
+        }
+
+        pre {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 9pt;
+            break-inside: avoid;
+        }
+
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .important {
+            background: #fee2e2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .tip {
+            background: #d1fae5;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid #10b981;
+            margin: 16px 0;
+        }
+
+        .warning {
+            background: #fef3c7;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid #f59e0b;
+            margin: 16px 0;
+        }
+
+        .section {
+            margin-bottom: 24px;
+            break-inside: avoid;
+        }
+
+        .two-column {
+            column-count: 2;
+            column-gap: 24px;
+        }
+
+        .page-break {
+            break-after: page;
+        }
+
+        .footer {
+            position: running(footer);
+            text-align: center;
+            font-size: 9pt;
+            color: #6b7280;
+        }
+
+        @page {
+            @bottom-center {
+                content: counter(page);
+                font-size: 9pt;
+                color: #6b7280;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面页 -->
+    <div class="cover-page">
+        <h1>Smart Memo</h1>
+        <p class="subtitle">智忆单词学习系统</p>
+        <p style="font-size: 16pt; opacity: 0.85;">用户操作手册</p>
+        <p class="version">版本 v1.0 | 2026年2月</p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 第一章：系统简介 -->
+    <div class="section">
+        <h1>第一章 系统简介</h1>
+        
+        <h2>1.1 产品概述</h2>
+        <p>Smart Memo（智忆单词）是一款基于艾宾浩斯遗忘曲线理论开发的智能英语单词学习系统。该系统采用 Vue 3 前端框架构建，提供了流畅的单页应用体验，同时利用 Supabase 云数据库实现数据的实时同步，确保用户在任何设备上都能获得一致的学习进度。</p>
+        <p>本系统主要面向两类用户群体：一是教育机构的管理人员和教师，他们负责词库内容的管理和学生学习进度的监控；二是学生用户，他们通过系统进行单词学习和复习巩固。系统采用响应式设计，完美支持桌面端和移动端设备，让学生可以随时随地进行学习。</p>
+        
+        <h3>核心特性</h3>
+        <ul>
+            <li><strong>智能记忆算法</strong>：基于艾宾浩斯遗忘曲线，自动调整复习间隔</li>
+            <li><strong>实时数据同步</strong>：云端存储，多设备无缝衔接</li>
+            <li><strong>个性化学习</strong>：根据学生掌握程度定制学习计划</li>
+            <li><strong>批量导入</strong>：支持 Excel/TXT 批量添加单词</li>
+        </ul>
+
+        <h2>1.2 主要功能模块</h2>
+        
+        <h3>管理端功能</h3>
+        <ul>
+            <li><strong>仪表盘</strong>：查看整体学习数据和动态</li>
+            <li><strong>词库管理</strong>：创建词库、添加/编辑/删除单词、批量导入</li>
+            <li><strong>用户管理</strong>：管理学生账号、分配学习词库、设置每日学习量</li>
+            <li><strong>学习计划</strong>：制定个性化学习任务</li>
+            <li><strong>统计分析</strong>：查看学习数据和分析报表</li>
+        </ul>
+
+        <h3>学生端功能</h3>
+        <ul>
+            <li><strong>今日学习</strong>：每日新词学习和复习任务</li>
+            <li><strong>单词本</strong>：查看和管理所有已学单词</li>
+            <li><strong>导入单词</strong>：添加个人感兴趣的单词</li>
+            <li><strong>个人中心</strong>：查看学习统计、调整设置</li>
+        </ul>
+
+        <h2>1.3 系统环境要求</h2>
+        <p>系统推荐使用以下浏览器访问以获得最佳体验：</p>
+        <ul>
+            <li>Google Chrome（版本 90 及以上）</li>
+            <li>Microsoft Edge（版本 90 及以上）</li>
+            <li>Mozilla Firefox（版本 88 及以上）</li>
+            <li>Safari（版本 14 及以上）</li>
+        </ul>
+        <div class="warning">
+            <strong>注意：</strong>请确保网络连接稳定，系统需要持续访问互联网以同步学习数据和获取在线资源。
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- 第二章：快速开始 -->
+    <div class="section">
+        <h1>第二章 快速开始</h1>
+        
+        <h2>2.1 账号注册与登录</h2>
+        <p>首次使用系统的第一步是注册账号。访问系统首页后，点击「注册」按钮进入注册页面。您可以选择使用邮箱注册或使用已有的社交账号快捷登录。填写必要的注册信息后，系统会向您的邮箱发送验证链接或验证码，请按照提示完成验证流程。</p>
+        <p>登录时，在首页输入注册时使用的邮箱和密码，点击登录按钮即可进入系统。如果忘记密码，可以点击「忘记密码」链接，通过绑定的邮箱接收重置链接。登录成功后，系统会自动跳转到对应角色的主页：管理员进入管理端，学生进入学习中心。</p>
+
+        <h2>2.2 界面布局说明</h2>
+        <p>进入系统后，您会看到清晰的界面布局。顶部是系统标题和当前登录用户的信息，点击用户名可以进入个人中心或退出登录。左侧（桌面端）或底部（移动端）是导航栏，包含系统的主要功能入口。中间区域是内容显示区，根据您选择的功能模块显示相应的内容。</p>
+        <div class="tip">
+            <strong>提示：</strong>导航栏的设计遵循功能相关性原则，相关联的功能被组织在一起，便于快速定位所需功能。
+        </div>
+    </div>
+
+    <!-- 第三章：管理端功能详解 -->
+    <div class="section">
+        <h1>第三章 管理端功能详解</h1>
+        
+        <h2>3.1 仪表盘</h2>
+        <p>仪表盘是管理员登录后的默认首页，提供了系统运行的核心数据概览。在这个页面，您可以快速了解当前的学习整体状况，包括注册用户总数、活跃用户数量、今日学习人数、累计学习单词数等关键指标。</p>
+        <p>仪表盘还展示了最近的学习动态列表，显示哪些学生最近有学习记录。这个列表是实时更新的，让您能够及时掌握学生的学习活跃度。</p>
+
+        <h2>3.2 词库管理</h2>
+        <p>词库管理是管理端最重要的功能之一，教师在这里管理和维护所有教学词汇资源。进入词库管理页面后，您可以看到现有的词库列表，默认包含 CET-4、CET-6 等常用词库，您也可以根据需要创建新的词库。</p>
+        
+        <h3>创建新词库</h3>
+        <p>点击「新建词库」按钮，在弹出的对话框中输入词库名称，如「考研英语词汇」、「雅思核心词汇」等。您可以为新词库设置说明文字，描述该词库的适用场景和目标人群。创建完成后，新词库会立即出现在词库列表中。</p>
+
+        <h3>添加单个单词</h3>
+        <p>点击「添加单词」按钮，可以手动添加单个单词。添加单词时需要填写以下字段：</p>
+        <table>
+            <tr>
+                <th>字段</th>
+                <th>必填</th>
+                <th>说明</th>
+            </tr>
+            <tr>
+                <td>单词拼写</td>
+                <td>是</td>
+                <td>英文单词，如 "hello"</td>
+            </tr>
+            <tr>
+                <td>词性</td>
+                <td>否</td>
+                <td>如名词(n.)、动词(v.)等</td>
+            </tr>
+            <tr>
+                <td>中文释义</td>
+                <td>是</td>
+                <td>单词的中文含义</td>
+            </tr>
+            <tr>
+                <td>音标</td>
+                <td>否</td>
+                <td>国际音标，如 /həˈloʊ/</td>
+            </tr>
+            <tr>
+                <td>例句</td>
+                <td>否</td>
+                <td>英文例句及中文翻译</td>
+            </tr>
+        </table>
+
+        <h3>批量导入单词</h3>
+        <p>点击「批量导入」按钮，选择要导入的文件，系统支持 Excel（.xlsx、.xls）和纯文本（.txt）格式。导入前建议先下载系统提供的模板文件，按照模板格式准备数据可以提高导入成功率。</p>
+        <div class="warning">
+            <strong>重要：</strong>Excel 文件需要按照规定的模板格式填写，第一行是表头，后续每行对应一个单词。错误的文件格式会导致导入失败。
+        </div>
+
+        <h3>批量更新例句</h3>
+        <p>如果您的词库中缺少例句，可以使用批量更新例句功能。这个功能需要配置 DeepSeek API Key，配置后系统会自动为缺少例句的单词生成英文例句。注意使用此功能会产生 API 调用费用。</p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section">
+        <h2>3.3 用户管理</h2>
+        <p>用户管理页面展示了系统中所有注册用户的信息，包括学生和教师。管理员可以在这里进行用户账号的创建、编辑、删除和禁用等操作，也可以为学生分配学习词库。</p>
+
+<h3>分配学习词库</h3>
+        <p>点击某个学生的「分配词库」按钮，选择要分配给该学生的词库（可以多选），学生登录后就会在单词本中看到被分配的词库内容。分配词库后，学生可以选择学习全部被分配的词库，也可以设置只学习特定词库。</p>
+
+        <h3>设置每日学习量</h3>
+        <p>在用户详情页面，管理员可以设置学生每天需要学习的新词数量。这个设置会影响学生每日学习任务的生成，合理的每日学习量可以帮助学生保持稳定的学习节奏。</p>
+
+        <h2>3.4 学习计划</h2>
+        <p>学习计划功能允许教师为学生制定个性化的学习任务。与简单的词库分配不同，学习计划可以精确控制每个词库每日的新词学习数量。</p>
+
+        <h3>创建学习计划</h3>
+        <p>在学习计划页面，点击「新建计划」按钮，选择目标学生和词库，设置每日学习数量（每日新词上限），还可以设置优先级。计划创建后立即生效。</p>
+
+        <h2>3.5 统计分析</h2>
+        <p>统计分析页面提供了丰富的学习数据分析功能，帮助教师了解教学效果和学生学习状况。包括：</p>
+        <ul>
+            <li><strong>班级整体分析</strong>：平均学习天数、平均掌握单词数、遗忘率分析等</li>
+            <li><strong>个人学习详情</strong>：学习日历、各词库学习进度、记忆曲线变化等</li>
+            <li><strong>数据导出</strong>：支持将数据导出为 Excel 文件</li>
+        </ul>
+    </div>
+
+    <!-- 第四章：学生端功能详解 -->
+    <div class="section">
+        <h1>第四章 学生端功能详解</h1>
+        
+        <h2>4.1 今日学习</h2>
+        <p>今日学习是学生端的核心功能，也是每天必用的功能。登录系统后会自动进入今日学习页面，这里展示当天需要学习的全部内容。</p>
+
+        <h3>学习任务构成</h3>
+        <p>每日的学习任务由两部分组成——<strong>新词学习</strong>和<strong>复习巩固</strong>。新词是指之前从未学习过的单词；复习是指之前学习过但还未完全掌握的单词。系统会根据艾宾浩斯遗忘曲线算法，计算每个单词的最佳复习时间。</p>
+
+        <h3>学习流程</h3>
+        <ol>
+            <li>开始学习后，系统会以卡片形式展示单词</li>
+            <li>卡片正面显示单词和音标，可以点击发音按钮聆听读音</li>
+            <li>点击卡片可以翻转，查看中文释义和英文例句</li>
+            <li>根据掌握程度，选择「陌生」「模糊」「认识」或「掌握」按钮</li>
+            <li>不同的选择会影响下次复习的时间间隔</li>
+        </ol>
+
+        <h3>掌握程度说明</h3>
+        <table>
+            <tr>
+                <th>等级</th>
+                <th>说明</th>
+                <th>下次复习间隔</th>
+            </tr>
+            <tr>
+                <td>陌生</td>
+                <td>完全不认识这个单词</td>
+                <td>很短时间内再次出现</td>
+            </tr>
+            <tr>
+                <td>模糊</td>
+                <td>记得大概但不确定</td>
+                <td>较短间隔后出现</td>
+            </tr>
+            <tr>
+                <td>认识</td>
+                <td>看到这个单词能想起意思</td>
+                <td>较长间隔后出现</td>
+            </tr>
+            <tr>
+                <td>掌握</td>
+                <td>完全记住这个单词</td>
+                <td>很长的间隔后出现</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section">
+        <h2>4.2 单词本</h2>
+        <p>单词本相当于学生的个人词库，存储了所有被分配的单词和自己导入的单词。在单词本页面，学生可以浏览、搜索、查看和筛选单词。</p>
+
+        <h3>标签筛选</h3>
+        <ul>
+            <li><strong>全部</strong>：显示所有单词</li>
+            <li><strong>教师布置</strong>：老师分配的词库中的单词</li>
+            <li><strong>自行导入</strong>：自己添加的单词</li>
+            <li><strong>新词</strong>：从未学习过的单词</li>
+            <li><strong>学习中</strong>：正在学习的单词</li>
+            <li><strong>熟悉</strong>：已经熟悉的单词</li>
+            <li><strong>掌握</strong>：已经完全掌握的单词</li>
+        </ul>
+
+        <h3>搜索功能</h3>
+        <p>如果单词较多，可以使用搜索功能快速定位。输入单词的英文或中文释义，系统会实时过滤显示匹配的结果。</p>
+
+        <h2>4.3 导入单词</h2>
+        <p>导入单词功能允许学生添加自己感兴趣的单词到个人词库。这个功能特别适合学有余力的学生，他们可以自主扩展词汇量。</p>
+
+        <h3>手动添加</h3>
+        <p>在导入单词页面，可以逐个添加单词。输入英文单词后，系统会自动从词典 API 获取音标、释义和例句。如果某些信息获取失败，也可以手动填写补充。</p>
+
+        <h3>批量导入</h3>
+        <p>如果需要一次性添加大量单词，可以使用批量导入功能。上传 Excel 或文本文件，系统会解析文件内容并批量添加单词。</p>
+
+        <h2>4.4 个人中心</h2>
+        <p>个人中心是查看个人信息和调整设置的入口。在个人中心，学生可以：</p>
+        <ul>
+            <li>查看学习统计（累计学习天数、总单词数、连续学习天数等）</li>
+            <li>调整每日学习量</li>
+            <li>切换主题模式（浅色/深色）</li>
+            <li>管理个人资料</li>
+        </ul>
+    </div>
+
+    <!-- 第五章：常见问题解答 -->
+    <div class="section">
+        <h1>第五章 常见问题解答</h1>
+        
+        <h2>5.1 账号与登录问题</h2>
+        
+        <h3>忘记密码怎么办？</h3>
+        <p>如果忘记了登录密码，可以在登录页面点击「忘记密码」按钮，输入注册时使用的邮箱地址。系统会向该邮箱发送密码重置链接，点击链接后设置新密码即可。如果收件箱没有收到邮件，请检查垃圾邮件文件夹。</p>
+
+        <h3>收不到验证码怎么办？</h3>
+        <p>请首先确认邮箱地址填写正确，然后检查垃圾邮件文件夹。某些邮箱服务商可能会拦截系统发送的邮件，可以尝试将发件地址加入白名单。如果持续无法收到，建议更换其他邮箱尝试。</p>
+
+        <h2>5.2 数据同步问题</h2>
+        
+        <h3>多设备登录数据是否同步？</h3>
+        <p>是的，系统采用云端存储架构，所有学习数据都保存在云端。在任何设备上登录账号，都会自动同步最新的学习进度和设置。您可以在手机上开始学习，然后在电脑上继续，过程完全无缝。</p>
+
+        <h2>5.3 学习相关问题</h2>
+        
+        <h3>为什么认识的单词还会出现？</h3>
+        <p>这是艾宾浩斯遗忘曲线的正常现象。系统会根据您对单词的掌握程度安排复习，即使当时选择了「掌握」，经过一定时间后系统仍会安排复习以巩固记忆。随着掌握程度的提高，复习间隔会越来越长。</p>
+
+        <h3>每日学习量可以调整吗？</h3>
+        <p>可以。在个人中心的设置页面，您可以随时调整每日新词数量。建议根据实际可支配的学习时间合理设置。</p>
+
+        <h3>如何重置学习进度？</h3>
+        <p>在个人中心设置页面底部，有「重置所有学习进度」的选项。点击后系统会提示确认，确认后所有学习记录将被清除。请注意这个操作不可恢复。</p>
+    </div>
+
+    <!-- 附录 -->
+    <div class="section">
+        <h1>附录</h1>
+        
+        <h2>附录一：词性对照表</h2>
+        <table>
+            <tr>
+                <th>缩写</th>
+                <th>全称</th>
+                <th>中文</th>
+            </tr>
+            <tr><td>n.</td><td>noun</td><td>名词</td></tr>
+            <tr><td>v.</td><td>verb</td><td>动词</td></tr>
+            <tr><td>vt.</td><td>transitive verb</td><td>及物动词</td></tr>
+            <tr><td>vi.</td><td>intransitive verb</td><td>不及物动词</td></tr>
+            <tr><td>adj.</td><td>adjective</td><td>形容词</td></tr>
+            <tr><td>adv.</td><td>adverb</td><td>副词</td></tr>
+            <tr><td>pron.</td><td>pronoun</td><td>代词</td></tr>
+            <tr><td>num.</td><td>numeral</td><td>数词</td></tr>
+            <tr><td>conj.</td><td>conjunction</td><td>连词</td></tr>
+            <tr><td>prep.</td><td>preposition</td><td>介词</td></tr>
+            <tr><td>int.</td><td>interjection</td><td>感叹词</td></tr>
+        </table>
+
+        <h2>附录二：技术支持</h2>
+        <p>如果您在使用过程中遇到本手册未能解决的问题，可以通过以下方式获取帮助：</p>
+        <ul>
+            <li>联系系统管理员或教师反馈问题</li>
+            <li>查看系统公告了解最新动态和已知问题</li>
+        </ul>
+    </div>
+
+    <!-- 版权页 -->
+    <div class="page-break"></div>
+    <div style="text-align: center; padding-top: 100px; color: #6b7280; font-size: 10pt;">
+        <p style="margin-bottom: 8px;"><strong>版权所有 &copy; Smart Memo 智忆单词系统</strong></p>
+        <p>版本 v1.0 | 2026年2月</p>
+    </div>
+</body>
+</html>
