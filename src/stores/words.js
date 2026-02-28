@@ -355,6 +355,12 @@ export const useWordStore = defineStore('words', () => {
     await fetchWordsPaginated(currentPage.value + 1, category)
   }
 
+  function resetPagination() {
+    currentPage.value = 0
+    totalWords.value = 0
+    wordCache.clear()
+  }
+
   async function fetchTodayWords() {
     if (!authStore.user) return
 
