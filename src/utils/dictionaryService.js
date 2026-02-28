@@ -8,6 +8,169 @@ const API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en'
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 const DEEPSEEK_MODEL = 'deepseek-chat'
 
+// ===== 请求优化：去重和并发控制 =====
+const pendingRequests = new Map()
+const MAX_CONCURRENCY = 3
+
+/**
+ * 获取请求缓存键
+ */
+function getCacheKey(word, partOfSpeech) {
+  const normalized = word.trim().toLowerCase()
+  return partOfSpeech ? `${normalized}::${partOfSpeech}` : normalized
+}
+
+/**
+ * 内部实际请求函数
+ */
+async function fetchWordDataInternal(word, deepseekApiKey = null, partOfSpeech = null) {
+  // 原有 fetchWordData 的实现...
+  // 这里保留原有逻辑，只是函数名改变
+  if (!word || !word.trim()) {
+    return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+  }
+
+  let cleanWord = word.trim().toLowerCase()
+  const hasSpaceOrUnderscore = cleanWord.includes(' ') || cleanWord.includes('_')
+  const originalWord = cleanWord
+  if (hasSpaceOrUnderscore) {
+    cleanWord = cleanWord.split(/[\s_]/)[0]
+  }
+
+  const targetPOS = normalizePartOfSpeech(partOfSpeech)
+
+  try {
+    const response = await fetch(`${API_BASE}/${encodeURIComponent(cleanWord)}`)
+
+    if (!response.ok) {
+      if (deepseekApiKey) {
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
+      }
+      return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+    }
+
+    const data = await response.json()
+
+    if (!data || !data[0]) {
+      if (deepseekApiKey) {
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
+      }
+      return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+    }
+
+    const wordData = data[0]
+
+    // Extract phonetic and audio (原有逻辑)
+    let phonetic = wordData.phonetic || null
+    if (!phonetic && wordData.phonetics?.length > 0) {
+      for (const p of wordData.phonetics) {
+        if (p.text) { phonetic = p.text; break }
+      }
+    }
+
+    let audio = wordData.audio || null
+    if (!audio && wordData.phonetics?.length > 0) {
+      for (const p of wordData.phonetics) {
+        if (p.audio) { audio = p.audio; break }
+      }
+    }
+
+    // Extract definition and example
+    const meanings = wordData.meanings || []
+
+    if (targetPOS) {
+      for (const meaning of meanings) {
+        const meaningPOS = meaning.partOfSpeech?.toLowerCase()
+        if (meaningPOS && (meaningPOS === targetPOS || meaningPOS.includes(targetPOS) || targetPOS.includes(meaningPOS))) {
+          const definitions = meaning.definitions || []
+          for (const def of definitions) {
+            if (def.definition) {
+              let example = def.example || null
+              let exampleSource = example ? 'dictionary' : null
+              if (!example && deepseekApiKey) {
+                example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
+                exampleSource = example ? 'deepseek' : null
+              }
+              return { definition: def.definition, example, phonetic, audio, exampleSource }
+            }
+          }
+        }
+      }
+    }
+
+    for (const meaning of meanings) {
+      for (const def of meaning.definitions || []) {
+        if (def.definition) {
+          let example = def.example || null
+          let exampleSource = example ? 'dictionary' : null
+          if (!example && deepseekApiKey) {
+            example = await generateExampleWithDeepSeek(originalWord, def.definition, deepseekApiKey, targetPOS)
+            exampleSource = example ? 'deepseek' : null
+          }
+          return { definition: def.definition, example, phonetic, audio, exampleSource }
+        }
+      }
+    }
+
+    if (deepseekApiKey) {
+      const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
+      return { definition: null, example: example, phonetic: phonetic, audio: audio, exampleSource: example ? 'deepseek' : null }
+    }
+
+    return { definition: null, example: null, phonetic: phonetic, audio: audio, exampleSource: null }
+  } catch (error) {
+    if (deepseekApiKey) {
+      try {
+        const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
+        return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }
+      } catch {
+        return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+      }
+    }
+    return { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+  }
+}
+
+/**
+ * 带并发控制的异步队列
+ */
+class AsyncQueue {
+  constructor(concurrency = MAX_CONCURRENCY) {
+    this.concurrency = concurrency
+    this.running = 0
+    this.queue = []
+  }
+
+  async add(fn) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ fn, resolve, reject })
+      this.run()
+    })
+  }
+
+  async run() {
+    if (this.running >= this.concurrency || this.queue.length === 0) return
+
+    this.running++
+    const { fn, resolve, reject } = this.queue.shift()
+
+    try {
+      const result = await fn()
+      resolve(result)
+    } catch (error) {
+      reject(error)
+    } finally {
+      this.running--
+      // 继续执行队列中的下一个
+      setTimeout(() => this.run(), 0)
+    }
+  }
+}
+
+const requestQueue = new AsyncQueue(MAX_CONCURRENCY)
+
 /**
  * Test DeepSeek API connectivity
  * @param {string} apiKey - DeepSeek API key
@@ -329,39 +492,52 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
 }
 
 /**
- * Batch fetch word data with rate limiting
+ * Batch fetch word data with concurrency control
  * @param {string[]} words - Array of words to look up
  * @param {Function} onProgress - Progress callback (current, total, word)
- * @param {number} delayMs - Delay between requests (default 300ms)
+ * @param {number} delayMs - Delay between requests (default 0ms, ignored when using concurrency)
  * @param {string} deepseekApiKey - Optional DeepSeek API key for example generation
+ * @param {number} concurrency - Number of concurrent requests (default 3)
  * @returns {Promise<Array<{word: string, success: boolean, data: any}>>}
  */
-export async function fetchWordDataBatch(words, onProgress = null, delayMs = 300, deepseekApiKey = null) {
+export async function fetchWordDataBatch(words, onProgress = null, delayMs = 0, deepseekApiKey = null, concurrency = MAX_CONCURRENCY) {
   const results = []
-  const total = words.length
+  const executing = new Set()
 
-  // Helper function for delay
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+  async function executeWord(word, index) {
+    try {
+      if (onProgress) {
+        onProgress(index + 1, words.length, word)
+      }
 
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i]
-
-    if (onProgress) {
-      onProgress(i + 1, total, word)
-    }
-
-    const data = await fetchWordData(word, deepseekApiKey)
-    results.push({
-      word: word,
-      success: !!data.definition,
-      data: data
-    })
-
-    // Add delay to avoid rate limiting (except for last item)
-    if (i < words.length - 1 && delayMs > 0) {
-      await sleep(delayMs)
+      const data = await fetchWordData(word, deepseekApiKey)
+      results[index] = {
+        word: word,
+        success: !!data.definition,
+        data: data
+      }
+    } catch (error) {
+      console.error(`Error fetching word "${word}":`, error)
+      results[index] = {
+        word: word,
+        success: false,
+        data: { definition: null, example: null, phonetic: null, audio: null, exampleSource: null }
+      }
     }
   }
 
+  for (let i = 0; i < words.length; i++) {
+    const promise = executeWord(words[i], i).finally(() => executing.delete(promise))
+    results[i] = null // 占位
+    executing.add(promise)
+
+    // 当并发数达到上限时，等待任意一个请求完成
+    if (executing.size >= concurrency) {
+      await Promise.race(executing)
+    }
+  }
+
+  // 等待所有剩余请求完成
+  await Promise.all(executing)
   return results
 }

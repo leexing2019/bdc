@@ -792,6 +792,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { fetchWordData, fetchWordDataBatch, testDeepSeekApi } from '@/utils/dictionaryService'
 import { translateToChinese, checkBaiduTranslationAvailable } from '@/utils/baiduTranslate'
+import { smartParseLine, smartParseExcelRow, smartParseContent, isNonWordContent } from '@/utils/smartWordParser'
 
 const words = ref([])
 const loading = ref(true)
@@ -2130,7 +2131,7 @@ const handleFileSelect = async (event) => {
     // TXT文件处理
     if (extension === 'txt') {
       const text = await file.text()
-      const parsed = parseTxtFile(text)
+      const parsed = smartParseLine(text, { defaultCategory: 'CET-4' })
       importWords.value = parsed
     } else {
       // Excel文件处理
@@ -2145,16 +2146,11 @@ const handleFileSelect = async (event) => {
 
       for (let i = startIndex; i < json.length; i++) {
         const row = json[i]
-        if (row && row[0]) {
-          parsed.push({
-            spelling: String(row[0]).trim(),
-            part_of_speech: row[1] ? String(row[1]).trim() : '',
-            meaning: row[2] ? String(row[2]).trim() : '',
-            phonetic: row[3] ? String(row[3]).trim() : '',
-            example_sentence: row[4] ? String(row[4]).trim() : '',
-            category: 'CET-4',
-          })
-        }
+        // 使用智能解析处理每一行，自动过滤非单词内容
+        const smartParsed = smartParseExcelRow(row, { defaultCategory: 'CET-4' })
+        if (smartParsed) {
+        parsed.push(smartParsed)          
+                  }
       }
 
       importWords.value = parsed
@@ -2410,7 +2406,7 @@ const handleImportFileSelect = async (event) => {
     // TXT文件处理
     if (extension === 'txt') {
       const text = await file.text()
-      const parsed = parseTxtFile(text)
+      const parsed = smartParseLine(text, { defaultCategory: 'CET-4' })
       importWords.value = parsed
     } else {
       // Excel文件处理

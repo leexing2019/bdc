@@ -1,29 +1,49 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef, watch } from 'vue'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { fetchWordData, generateExampleWithDeepSeek } from '@/utils/dictionaryService'
 
+// 数据缓存配置
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
+
+// 缓存管理器
+function createCache() {
+  const cache = new Map()
+
+  return {
+    get(key) {
+      const item = cache.get(key)
+      if (!item) return null
+      if (Date.now() - item.timestamp > CACHE_TTL) {
+        cache.delete(key)
+        return null
+      }
+      return item.data
+    },
+    set(key, data) {
+      cache.set(key, { data, timestamp: Date.now() })
+    },
+    clear() {
+      cache.clear()
+    },
+    invalidate(key) {
+      cache.delete(key)
+    }
+  }
+}
+
 // SM-2 Algorithm Implementation
 function calculateSM2(quality, repetitions, easeFactor, interval) {
   // quality: 0-5 (0-2 = fail, 3-5 = pass)
-  // 0 - complete blackout
-  // 1 - incorrect response, but correct answer seemed easy to recall
-  // 2 - incorrect response, but correct answer seemed easy to recall
-  // 3 - correct response with serious difficulty
-  // 4 - correct response after hesitation
-  // 5 - perfect response
-  
   let newRepetitions = repetitions
   let newEaseFactor = easeFactor
   let newInterval = interval
 
   if (quality < 3) {
-    // Failed - reset
     newRepetitions = 0
     newInterval = 1
   } else {
-    // Passed
     if (newRepetitions === 0) {
       newInterval = 1
     } else if (newRepetitions === 1) {
@@ -34,7 +54,6 @@ function calculateSM2(quality, repetitions, easeFactor, interval) {
     newRepetitions++
   }
 
-  // Update ease factor
   newEaseFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
   if (newEaseFactor < 1.3) {
     newEaseFactor = 1.3
@@ -49,175 +68,230 @@ function calculateSM2(quality, repetitions, easeFactor, interval) {
 
 export const useWordStore = defineStore('words', () => {
   const authStore = useAuthStore()
-  
-  const words = ref([])
-  const userProgress = ref([])
-  const studyLogs = ref([]) // 学习记录
-  const todayWords = ref([])
+
+  // 创建缓存实例
+  const dataCache = createCache()
+
+  // 使用 shallowRef 优化大数组的响应式性能
+  const words = shallowRef([])
+  const userProgress = shallowRef([])
+  const studyLogs = shallowRef([])
+  const todayWords = shallowRef([])
   const loading = ref(false)
   const currentWordIndex = ref(0)
-  const newWordsCompleted = ref(false) // 新词是否已完成
-  const learningPlans = ref([]) // 用户的学习计划
+  const newWordsCompleted = ref(false)
+  const learningPlans = shallowRef([])
+
+  // 分页相关状态
+  const PAGE_SIZE = 50
+  const currentPage = ref(0)
+  const totalWords = ref(0)
+  const hasMoreWords = computed(() => words.value.length < totalWords.value)
+
+  // LRU 缓存 for words
+  const wordCache = new Map()
+  const MAX_CACHE_SIZE = 10 // 最多缓存10页
+
+  function getCacheKey(page, category) {
+    return `page_${page}_${category || 'all'}`
+  }
+
+  function setWordCache(key, data) {
+    if (wordCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = wordCache.keys().next().value
+      wordCache.delete(firstKey)
+    }
+    wordCache.set(key, { data, timestamp: Date.now() })
+  }
+
+  function getWordCache(key) {
+    const item = wordCache.get(key)
+    if (!item) return null
+    // 缓存5分钟
+    if (Date.now() - item.timestamp > 5 * 60 * 1000) {
+      wordCache.delete(key)
+      return null
+    }
+    return item.data
+  }
+
+  function clearWordCache() {
+    wordCache.clear()
+  }
+
+  // 缓存的计算结果
+  const proficiencyStats = ref({ new: 0, learning: 0, familiar: 0, mastered: 0 })
+  const weeklyStats = ref([])
 
   // Computed
   const currentWord = computed(() => todayWords.value[currentWordIndex.value] || null)
-  
-  const proficiencyStats = computed(() => {
-    const stats = {
-      new: 0,      // 未学习
-      learning: 0, // 学习中
-      familiar: 0, // 熟悉
-      mastered: 0  // 掌握
-    }
-    
-    userProgress.value.forEach(progress => {
-      if (progress.repetitions === 0) {
-        stats.new++
-      } else if (progress.proficiency < 3) {
-        stats.learning++
-      } else if (progress.proficiency < 5) {
-        stats.familiar++
-      } else {
-        stats.mastered++
-      }
-    })
-    
-    return stats
-  })
 
-  const weeklyStats = computed(() => {
+  // ===== 缓存计算优化：使用 watcher 而非 computed 避免重复计算 =====
+
+  // 监听 userProgress 变化，缓存熟练度统计
+  watch(() => userProgress.value, (newProgress) => {
+    const stats = { new: 0, learning: 0, familiar: 0, mastered: 0 }
+
+    if (newProgress?.length) {
+      for (const progress of newProgress) {
+        if (progress.repetitions === 0) {
+          stats.new++
+        } else if (progress.proficiency < 3) {
+          stats.learning++
+        } else if (progress.proficiency < 5) {
+          stats.familiar++
+        } else {
+          stats.mastered++
+        }
+      }
+    }
+
+    proficiencyStats.value = stats
+  }, { immediate: true, deep: true })
+
+  // 监听 studyLogs 变化，缓存周统计
+  watch(() => studyLogs.value, (newLogs) => {
     const stats = []
     const today = new Date()
-    
+
     // 获取本周的起始日期（今天往前6天）
     const weekStart = new Date(today)
     weekStart.setDate(today.getDate() - 6)
-    // 重置为00:00:00
     weekStart.setHours(0, 0, 0, 0)
-    
+
+    // 创建日期到日志的映射，避免每次 find
+    const logMap = new Map()
+    if (newLogs?.length) {
+      for (const log of newLogs) {
+        logMap.set(log.date, log)
+      }
+    }
+
     for (let i = 0; i < 7; i++) {
-      // 每次循环从weekStart创建新的Date对象
       const date = new Date(weekStart)
       date.setDate(weekStart.getDate() + i)
       const dateStr = date.toISOString().split('T')[0]
-      
-      // 从studyLogs中查找当天的记录
-      const dayLog = studyLogs.value.find(log => log.date === dateStr)
-      
+
+      const dayLog = logMap.get(dateStr)
+
       stats.push({
         date: dateStr,
         day: ['日', '一', '二', '三', '四', '五', '六'][date.getDay()],
         count: dayLog ? (dayLog.new_words_learned || 0) + (dayLog.words_reviewed || 0) : 0,
-        completed: dayLog && (dayLog.new_words_learned > 0 || dayLog.words_reviewed > 0)
+        completed: !!(dayLog && (dayLog.new_words_learned > 0 || dayLog.words_reviewed > 0))
       })
     }
-    
-    return stats
-  })
+
+    weeklyStats.value = stats
+  }, { immediate: true, deep: true })
 
   // Actions
-  async function fetchWords() {
+  async function fetchWords(forceRefresh = false) {
     if (!authStore.user) return
-    
+
+    const userId = authStore.user.id
+    const cacheKey = `words_${userId}`
+
+    // 检查缓存
+    if (!forceRefresh) {
+      const cached = dataCache.get(cacheKey)
+      if (cached) {
+        words.value = cached.words
+        userProgress.value = cached.userProgress
+        studyLogs.value = cached.studyLogs
+        return
+      }
+    }
+
     loading.value = true
     try {
-      const userId = authStore.user.id
-      
-      // 首先获取用户的词库设置 - 使用admin客户端绕过RLS
-      const { data: userSettings } = await supabaseAdmin
-        .from('user_settings')
-        .select('category')
-        .eq('user_id', userId)
-        .maybeSingle()
-      
+      // ===== 并行查询优化：同时发起所有独立请求 =====
+      const [
+        { data: userSettings },
+        { data: learningPlansData },
+        { data: customWords },
+        { data: progressData },
+        { data: logsData }
+      ] = await Promise.all([
+        // 1. 用户词库设置
+        supabaseAdmin
+          .from('user_settings')
+          .select('category')
+          .eq('user_id', userId)
+          .maybeSingle(),
+
+        // 2. 用户学习计划
+        supabaseAdmin
+          .from('user_learning_plans')
+          .select('category')
+          .eq('user_id', userId)
+          .eq('status', 'active'),
+
+        // 3. 用户自定义单词（可以并行，因为是独立的）
+        supabaseAdmin
+          .from('words')
+          .select('*')
+          .eq('category', 'custom')
+          .eq('created_by', userId)
+          .order('created_at', { ascending: false }),
+
+        // 4. 用户学习进度
+        supabase
+          .from('user_word_progress')
+          .select('*')
+          .eq('user_id', userId),
+
+        // 5. 学习记录（最近30天）
+        supabase
+          .from('study_logs')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(30)
+      ])
+
+      // 处理学习计划分类
+      const assignedCategories = learningPlansData?.map(p => p.category).filter(Boolean) || []
       const userCategory = userSettings?.category
 
-      // 同时获取用户的学习计划（从user_learning_plans获取分配的词库）
-      const { data: learningPlans } = await supabaseAdmin
-        .from('user_learning_plans')
-        .select('category')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-      
-      // 获取所有已激活的词库分类
-      const assignedCategories = learningPlans?.map(p => p.category).filter(Boolean) || []
-
-      // 查询1：获取公共词库单词 - 使用supabaseAdmin确保查询不受RLS影响
-      // 教师布置的单词：category不是'custom'的所有单词
-      // 只有当用户被分配了具体词库时才加载，否则不加载任何公共词库单词
+      // 根据分类获取公共词库单词
       let commonWords = []
       if (assignedCategories.length > 0) {
-        // 用户有学习计划，按学习计划中的词库加载
-        let commonQuery = supabaseAdmin
+        const { data: wordsData } = await supabaseAdmin
           .from('words')
           .select('*')
           .neq('category', 'custom')
+          .in('category', assignedCategories)
           .order('created_at', { ascending: false })
-
-        // 只加载学习计划中包含的词库
-        commonQuery = commonQuery.in('category', assignedCategories)
-
-        const { data: wordsData, error: commonError } = await commonQuery
-        if (commonError) throw commonError
         commonWords = wordsData || []
       } else if (userCategory && userCategory !== 'all' && userCategory !== null) {
-        // 兼容旧逻辑：如果user_settings有category设置，也加载
-        let commonQuery = supabaseAdmin
+        const { data: wordsData } = await supabaseAdmin
           .from('words')
           .select('*')
           .neq('category', 'custom')
+          .eq('category', userCategory)
           .order('created_at', { ascending: false })
-
-        // 如果用户有特定的词库分配，只加载该词库
-        commonQuery = commonQuery.eq('category', userCategory)
-
-        const { data: wordsData, error: commonError } = await commonQuery
-        if (commonError) throw commonError
         commonWords = wordsData || []
       }
-      // 如果没有分配具体词库，commonWords保持为空数组，不加载任何公共词库单词
-      
-      // 查询2：获取用户自己添加的单词（custom分类且created_by = 当前用户）- 使用supabaseAdmin绕过RLS
-      const { data: customWords, error: customError } = await supabaseAdmin
-        .from('words')
-        .select('*')
-        .eq('category', 'custom')
-        .eq('created_by', userId)
-        .order('created_at', { ascending: false })
 
-      if (customError) throw customError
-      
       // 合并结果
-      const allWords = [...(commonWords || []), ...(customWords || [])]
-      
-      // Add source field to distinguish between institution and custom words
-      // custom category = user self-imported
-      // other categories = teacher-assigned
+      const allWords = [...commonWords, ...(customWords || [])]
       words.value = allWords.map(word => ({
         ...word,
         source: word.category === 'custom' ? 'custom' : 'institution'
       }))
 
-      // Fetch user's progress
-      const { data: progressData, error: progressError } = await supabase
-        .from('user_word_progress')
-        .select('*')
-        .eq('user_id', authStore.user.id)
-
-      if (progressError) throw progressError
+      // 更新进度和学习记录
       userProgress.value = progressData || []
-      
-      // 获取学习记录（用于本周进度统计）
-      const { data: logsData, error: logsError } = await supabase
-        .from('study_logs')
-        .select('*')
-        .eq('user_id', authStore.user.id)
-        .order('date', { ascending: false })
-        .limit(30)
-      
-      if (!logsError && logsData) {
-        studyLogs.value = logsData
-      }
+      studyLogs.value = logsData || []
+
+      // 写入缓存
+      dataCache.set(cacheKey, {
+        words: words.value,
+        userProgress: userProgress.value,
+        studyLogs: studyLogs.value
+      })
+
     } catch (error) {
       console.error('Fetch words error:', error)
     } finally {
@@ -225,135 +299,172 @@ export const useWordStore = defineStore('words', () => {
     }
   }
 
+  // 分页加载单词
+  async function fetchWordsPaginated(page = 0, category = null) {
+    if (!authStore.user) return
+
+    const cacheKey = getCacheKey(page, category)
+    const cached = getWordCache(cacheKey)
+    if (cached) {
+      if (page === 0) words.value = cached
+      else words.value = [...words.value, ...cached]
+      return cached
+    }
+
+    loading.value = true
+    try {
+      let query = supabaseAdmin
+        .from('words')
+        .select('*', { count: 'exact' })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+        .order('created_at', { ascending: false })
+
+      if (category) {
+        query = query.eq('category', category)
+      }
+
+      const { data, count, error } = await query
+
+      if (error) throw error
+
+      totalWords.value = count || 0
+      currentPage.value = page
+
+      const processed = (data || []).map(word => ({
+        ...word,
+        source: word.category === 'custom' ? 'custom' : 'institution'
+      }))
+
+      setWordCache(cacheKey, processed)
+
+      if (page === 0) words.value = processed
+      else words.value = [...words.value, ...processed]
+
+      return processed
+    } catch (error) {
+      console.error('Fetch words paginated error:', error)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 加载更多单词
+  async function loadMoreWords(category = null) {
+    if (loading.value || !hasMoreWords.value) return
+    await fetchWordsPaginated(currentPage.value + 1, category)
+  }
+
   async function fetchTodayWords() {
     if (!authStore.user) return
-    
+
     loading.value = true
-    newWordsCompleted.value = false // 重置新词完成状态
-    
+    newWordsCompleted.value = false
+
     try {
       // 首先尝试获取用户的学习计划
       const plans = await fetchLearningPlans()
-      
-      // 如果有设置学习计划，使用新逻辑
+
       if (plans && plans.length > 0) {
         const planWords = await fetchTodayWordsByPlans(plans)
-        // 检查是否有学习任务（数组长度 > 0）
-        if (planWords && planWords.length > 0) {
+        if (planWords?.length > 0) {
           todayWords.value = planWords
           currentWordIndex.value = 0
-          loading.value = false
           return
         }
       }
-      
-      // 回退到旧逻辑：从user_settings获取category
-      // Get user's category preference and custom daily limit - 使用supabaseAdmin绕过RLS
+
+      // 回退到旧逻辑
       const { data: userSettings } = await supabaseAdmin
         .from('user_settings')
         .select('category, custom_daily_limit')
         .eq('user_id', authStore.user.id)
         .maybeSingle()
-      
+
       const userCategory = userSettings?.category || ''
-      const customDailyLimit = userSettings?.custom_daily_limit || 0 // 个人词库每日数量
-      const teacherDailyLimit = authStore.user.daily_limit || 0 // 教师分配数量
-      
-      // 每日新词总量 = 教师分配 + 个人设置
+      const customDailyLimit = userSettings?.custom_daily_limit || 0
+      const teacherDailyLimit = authStore.user.daily_limit || 0
       const totalDailyLimit = teacherDailyLimit + customDailyLimit
-      
-      // 如果没有任何学习任务（教师分配为0且没有个人词库），直接返回空数组
+
       if (totalDailyLimit === 0) {
         todayWords.value = []
         currentWordIndex.value = 0
-        loading.value = false
         return
       }
-      
+
       const today = new Date().toISOString().split('T')[0]
-      
-      // Get words due for review today
-      const { data: reviewWords, error: reviewError } = await supabase
-        .from('user_word_progress')
-        .select(`
-          *,
-          word:words(*)
-        `)
-        .eq('user_id', authStore.user.id)
-        .lte('next_review_date', today)
-        .order('next_review_date', { ascending: true })
-        .limit(50)
 
-      if (reviewError) {
-        console.error('获取复习词失败:', reviewError)
-      }
+      // ===== 并行查询：同时获取复习词和用户进度 =====
+      const [
+        { data: reviewWords },
+        { data: allProgress }
+      ] = await Promise.all([
+        supabase
+          .from('user_word_progress')
+          .select(`*, word:words(*)`)
+          .eq('user_id', authStore.user.id)
+          .lte('next_review_date', today)
+          .order('next_review_date', { ascending: true })
+          .limit(50),
+        supabase
+          .from('user_word_progress')
+          .select('word_id, word:words(category)')
+          .eq('user_id', authStore.user.id)
+      ])
 
-      // Get user's learned word IDs
-      const { data: allProgress } = await supabase
-        .from('user_word_progress')
-        .select('word_id, word:words(category)')
-        .eq('user_id', authStore.user.id)
-      
-      // 分类已学习单词ID
-      const institutionLearnedIds = []
-      const customLearnedIds = []
-      
+      // 使用 Map 优化查找性能 O(n) -> O(1)
+      const institutionLearnedIds = new Set()
+      const customLearnedIds = new Set()
+
       allProgress?.forEach(p => {
         if (p.word?.category === 'custom') {
-          customLearnedIds.push(p.word_id)
+          customLearnedIds.add(p.word_id)
         } else {
-          institutionLearnedIds.push(p.word_id)
+          institutionLearnedIds.add(p.word_id)
         }
       })
 
-      // 获取机构词库新词
-      let institutionNewWordsQuery = supabase
-        .from('words')
-        .select('*')
-        .neq('category', 'custom')
-        .order('created_at', { ascending: false })
+      // ===== 并行获取机构和个人词库新词 =====
+      const [institutionResult, customResult] = await Promise.all([
+        // 机构词库查询
+        (async () => {
+          let query = supabase
+            .from('words')
+            .select('*')
+            .neq('category', 'custom')
+          if (userCategory && userCategory !== 'all') {
+            query = query.eq('category', userCategory)
+          }
+          if (institutionLearnedIds.size > 0) {
+            query = query.not('id', 'in', `(${Array.from(institutionLearnedIds).join(',')})`)
+          }
+          return query.order('created_at', { ascending: false }).limit(teacherDailyLimit)
+        })(),
+        // 个人词库查询
+        (async () => {
+          let query = supabase
+            .from('words')
+            .select('*')
+            .eq('category', 'custom')
+            .eq('created_by', authStore.user.id)
+          if (customLearnedIds.size > 0) {
+            query = query.not('id', 'in', `(${Array.from(customLearnedIds).join(',')})`)
+          }
+          return query.order('created_at', { ascending: false }).limit(customDailyLimit)
+        })()
+      ])
 
-      if (userCategory && userCategory !== 'all') {
-        institutionNewWordsQuery = institutionNewWordsQuery.eq('category', userCategory)
-      }
+      const institutionNewWords = institutionResult.data || []
+      const customNewWords = customResult.data || []
 
-      // 排除已学习的机构词库单词
-      if (institutionLearnedIds.length > 0) {
-        institutionNewWordsQuery = institutionNewWordsQuery.not('id', 'in', `(${institutionLearnedIds.join(',')})`)
-      }
+      // 合并新词
+      const newWords = [...institutionNewWords, ...customNewWords].slice(0, totalDailyLimit)
 
-      const { data: institutionNewWords } = await institutionNewWordsQuery
-        .limit(teacherDailyLimit)
+      newWordsCompleted.value = newWords.length < totalDailyLimit &&
+        (institutionNewWords.length + customNewWords.length) > 0
 
-      // 获取个人词库新词
-      let customNewWordsQuery = supabase
-        .from('words')
-        .select('*')
-        .eq('category', 'custom')
-        .eq('created_by', authStore.user.id)
-        .order('created_at', { ascending: false })
-
-      // 排除已学习的个人单词
-      if (customLearnedIds.length > 0) {
-        customNewWordsQuery = customNewWordsQuery.not('id', 'in', `(${customLearnedIds.join(',')})`)
-      }
-
-      const { data: customNewWords } = await customNewWordsQuery
-        .limit(customDailyLimit)
-
-      // 合并新词：机构词库 + 个人词库
-      const newWords = [
-        ...(institutionNewWords || []),
-        ...(customNewWords || [])
-      ].slice(0, totalDailyLimit)
-
-      // 检查是否已完成新词任务（当新词数量少于应该获取的数量时）
-      const actualNewWordCount = newWords.length
-      newWordsCompleted.value = actualNewWordCount < totalDailyLimit && 
-        ((institutionNewWords?.length || 0) + (customNewWords?.length || 0)) > 0
-
-      // Combine and format - ensure we always have some words to learn
-      const combinedWords = [
+      // 合并结果
+      todayWords.value = [
         ...(reviewWords || []).map(p => ({
           ...p.word,
           source: p.word.category === 'custom' ? 'custom' : 'institution',
@@ -367,15 +478,13 @@ export const useWordStore = defineStore('words', () => {
           },
           isNew: false
         })),
-        ...(newWords || []).map(w => ({
+        ...newWords.map(w => ({
           ...w,
           source: w.category === 'custom' ? 'custom' : 'institution',
           progress: null,
           isNew: true
         }))
       ]
-
-      todayWords.value = combinedWords
       currentWordIndex.value = 0
     } catch (error) {
       console.error('Fetch today words error:', error)
@@ -1112,6 +1221,11 @@ export const useWordStore = defineStore('words', () => {
     return resultWords
   }
 
+  // 清除缓存的辅助函数
+  function invalidateCache() {
+    dataCache.clear()
+  }
+
   return {
     words,
     userProgress,
@@ -1122,7 +1236,14 @@ export const useWordStore = defineStore('words', () => {
     proficiencyStats,
     weeklyStats,
     learningPlans,
+    // 分页相关
+    currentPage,
+    totalWords,
+    hasMoreWords,
     fetchWords,
+    fetchWordsPaginated,
+    loadMoreWords,
+    resetPagination,
     fetchTodayWords,
     submitReview,
     addCustomWord,
@@ -1138,6 +1259,9 @@ export const useWordStore = defineStore('words', () => {
     resumeLearningPlan,
     deleteLearningPlan,
     updatePlanPriority,
-    fetchTodayWordsByPlans
+    fetchTodayWordsByPlans,
+    // 缓存管理
+    invalidateCache,
+    clearWordCache
   }
 })
