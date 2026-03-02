@@ -136,7 +136,7 @@
         <!-- Word (front of card) -->
         <div v-if="!previewShowAnswer" class="animate-fade-in">
           <button
-            @click="playPronunciation(previewWord?.spelling)"
+            @click="playPronunciation(previewWord)"
             class="w-14 h-14 sm:w-16 sm:h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 transition"
             :disabled="isPlayingAudio"
           >
@@ -248,7 +248,7 @@
       <div v-if="studyMode === 'recall'" class="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
         <div class="text-center">
           <button
-            @click="playPronunciation"
+            @click="playPronunciation(currentWord)"
             class="w-14 h-14 sm:w-16 sm:h-16 bg-primary-100 hover:bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 transition"
             :disabled="isPlayingAudio"
           >
@@ -738,6 +738,13 @@ const startStudy = () => {
   isSessionCompleted.value = false
   currentIndex.value = 0
   randomMode()
+  // 播放第一个单词的发音
+  nextTick(() => {
+    const word = wordStore.todayWords[currentIndex.value]
+    if (word) {
+      playPronunciation(word)
+    }
+  })
 }
 
 // 确认开始复习
@@ -747,6 +754,13 @@ const confirmReview = () => {
   isSessionCompleted.value = false
   currentIndex.value = 0
   randomMode()
+  // 播放第一个单词的发音
+  nextTick(() => {
+    const word = wordStore.todayWords[currentIndex.value]
+    if (word) {
+      playPronunciation(word)
+    }
+  })
 }
 
 const nextPreviewWord = () => {
@@ -763,6 +777,13 @@ const skipPreview = () => {
   isPreviewMode.value = false
   currentIndex.value = 0
   randomMode()
+  // 播放第一个单词的发音
+  nextTick(() => {
+    const word = wordStore.todayWords[currentIndex.value]
+    if (word) {
+      playPronunciation(word)
+    }
+  })
 }
 
 // Cache for example sentences
@@ -833,17 +854,40 @@ const clozeSentence = computed(() => {
 })
 
 const playPronunciation = async (word) => {
-  // 如果传入的是事件对象（点击事件），则忽略它，使用当前单词
-  const wordToSpeak = (word && typeof word === 'string') ? word : currentWord.value?.spelling
+  // 支持传入字符串（单词拼写）或完整单词对象
+  let wordToSpeak, audioUrl
+
+  if (word && typeof word === 'object') {
+    // 传入的是完整单词对象
+    wordToSpeak = word.spelling
+    audioUrl = word.audio_url
+  } else if (word && typeof word === 'string') {
+    // 传入的是字符串
+    wordToSpeak = word
+    audioUrl = null
+  } else {
+    // 没有传入参数（比如点击事件），使用当前单词
+    wordToSpeak = currentWord.value?.spelling
+    audioUrl = currentWord.value?.audio_url
+  }
+
   if (!wordToSpeak) return
-  
+
   // 开始播放，设置加载状态
   isPlayingAudio.value = true
-  
+
+  // 检查是否是短语（包含空格或下划线）
+  const isPhrase = wordToSpeak.includes(' ') || wordToSpeak.includes('_') || wordToSpeak.includes('-')
+
+  // 如果是短语，直接使用浏览器 TTS 朗读完整内容
+  if (isPhrase) {
+    isPlayingAudio.value = false
+    speakWithBrowser(wordToSpeak)
+    return
+  }
+
   try {
-    // 优先使用数据库中存储的音频URL
-    const audioUrl = currentWord.value?.audio_url
-    
+    // 优先使用传入的音频 URL
     if (audioUrl) {
       const audio = new Audio(audioUrl)
       audio.oncanplaythrough = () => {
@@ -854,19 +898,19 @@ const playPronunciation = async (word) => {
       }
       audio.onerror = () => {
         isPlayingAudio.value = false
-        // 如果播放失败，回退到API获取
+        // 如果播放失败，回退到 API 获取
         fetchAndPlayAudio(wordToSpeak)
       }
       audio.play().catch(e => {
         console.error('Audio play failed:', e)
         isPlayingAudio.value = false
-        // 如果播放失败，回退到API获取
+        // 如果播放失败，回退到 API 获取
         fetchAndPlayAudio(wordToSpeak)
       })
       return
     }
-    
-    // 如果数据库中没有音频，调用API获取
+
+    // 如果没有音频 URL，调用 API 获取
     await fetchAndPlayAudio(wordToSpeak)
   } catch (error) {
     console.error('TTS error:', error)
@@ -981,7 +1025,15 @@ const handleResponse = async (quality) => {
   
   // 切换到下一个单词时随机选择模式
   randomMode()
-  
+
+  // 加载完成后自动播放新单词的发音
+  await nextTick()
+  // 显式传递当前单词对象，确保使用正确的单词和音频 URL
+  const word = wordStore.todayWords[currentIndex.value]
+  if (word) {
+    playPronunciation(word)
+  }
+
   // 加载完成
   isTransitioning.value = false
 }
@@ -1096,7 +1148,15 @@ const nextWord = async () => {
   
   // 切换到下一个单词时随机选择模式
   randomMode()
-  
+
+  // 加载完成后自动播放新单词的发音
+  await nextTick()
+  // 显式传递当前单词对象，确保使用正确的单词和音频 URL
+  const word = wordStore.todayWords[currentIndex.value]
+  if (word) {
+    playPronunciation(word)
+  }
+
   // 加载完成
   isTransitioning.value = false
 }
@@ -1130,10 +1190,17 @@ const continueStudy = async () => {
   studyStartTime.value = Date.now()
   sessionNewWords.value = 0
   sessionReviewedWords.value = 0
-  
+
   // 随机选择模式
   randomMode()
-  
+
+  // 加载完成后自动播放第一个单词的发音
+  await nextTick()
+  const word = wordStore.todayWords[currentIndex.value]
+  if (word) {
+    playPronunciation(word)
+  }
+
   // 设置为复习模式（不再获取新词）
   isReviewMode.value = true
 }
