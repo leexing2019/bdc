@@ -284,15 +284,13 @@ export const useWordStore = defineStore('words', () => {
         .order('next_review_date', { ascending: true })
         .limit(50)
 
-      // 如果没有学习计划且只有个人词库任务，只获取个人词库的复习单词
-      if (!userSettings?.category || userSettings.category === '') {
-        // 只有个人词库任务，过滤掉其他词库
-        reviewWordsQuery = reviewWordsQuery.in('word.category', ['custom'])
-      } else if (userSettings?.category && userSettings.category !== 'all') {
-        // 有具体词库分配，只获取分配词库的复习单词
-        reviewWordsQuery = reviewWordsQuery.in('word.category', [userSettings.category, 'custom'])
+      // 根据词库设置过滤复习单词
+      // 只有当有具体词库分配时才过滤，否则获取所有复习单词（允许复习之前学过的单词）
+      if (userCategory && userCategory !== 'all' && userCategory !== '') {
+        // 有具体词库分配，只获取分配词库和 custom 的复习单词
+        reviewWordsQuery = reviewWordsQuery.in('word.category', [userCategory, 'custom'])
       }
-      // 如果 category 是'all'，则获取所有词库的复习单词
+      // 注意：当 userCategory 为空或'all'时，不过滤复习单词，允许用户复习之前学过的所有单词
 
       const { data: reviewWords, error: reviewError } = await reviewWordsQuery
 
@@ -318,24 +316,28 @@ export const useWordStore = defineStore('words', () => {
         }
       })
 
-      // 获取机构词库新词
-      let institutionNewWordsQuery = supabase
-        .from('words')
-        .select('*')
-        .neq('category', 'custom')
-        .order('created_at', { ascending: false })
+      // 获取机构词库新词（只有当有具体词库分配时才获取）
+      let institutionNewWords = []
 
-      if (userCategory && userCategory !== 'all') {
-        institutionNewWordsQuery = institutionNewWordsQuery.eq('category', userCategory)
+      // 只有当 userCategory 有值且不是'all'时，才获取机构词库新词
+      if (userCategory && userCategory !== 'all' && teacherDailyLimit > 0) {
+        let institutionNewWordsQuery = supabase
+          .from('words')
+          .select('*')
+          .eq('category', userCategory)
+          .neq('category', 'custom')
+          .order('created_at', { ascending: false })
+
+        // 排除已学习的机构词库单词
+        if (institutionLearnedIds.length > 0) {
+          institutionNewWordsQuery = institutionNewWordsQuery.not('id', 'in', `(${institutionLearnedIds.join(',')})`)
+        }
+
+        const { data: instNewWords } = await institutionNewWordsQuery
+          .limit(teacherDailyLimit)
+
+        institutionNewWords = instNewWords || []
       }
-
-      // 排除已学习的机构词库单词
-      if (institutionLearnedIds.length > 0) {
-        institutionNewWordsQuery = institutionNewWordsQuery.not('id', 'in', `(${institutionLearnedIds.join(',')})`)
-      }
-
-      const { data: institutionNewWords } = await institutionNewWordsQuery
-        .limit(teacherDailyLimit)
 
       // 获取个人词库新词
       let customNewWordsQuery = supabase

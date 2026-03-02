@@ -400,11 +400,12 @@ const loading = ref(true) // 加载状态
 const learningPlans = ref([])
 
 // 计算属性：教师分配的每日新词数量
+// 只从 user_learning_plans 表获取，不再使用 authStore.user.daily_limit
 const teacherDailyLimit = computed(() => {
   if (learningPlans.value.length > 0) {
     return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
   }
-  return authStore.user?.daily_limit || 0
+  return 0 // 没有学习计划时，教师分配为 0
 })
 
 // 计算每日任务总量（不含个人词库）
@@ -412,7 +413,7 @@ const totalDailyLimit = computed(() => {
   if (learningPlans.value.length > 0) {
     return learningPlans.value.reduce((sum, p) => sum + p.daily_limit, 0)
   }
-  return authStore.user?.daily_limit || 0
+  return 0 // 没有学习计划时，返回 0
 })
 
 

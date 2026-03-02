@@ -862,49 +862,9 @@ const loadUserAssignedCategories = async () => {
       return
     }
     
-    // 回退到旧的 user_settings 逻辑（兼容旧数据）
-    // 从user_settings获取分配的词库 - 使用supabaseAdmin绕过RLS确保数据一致性
-    const { data: userSettings } = await supabaseAdmin
-      .from('user_settings')
-      .select('category')
-      .eq('user_id', authStore.user.id)
-      .maybeSingle()
-    
-    // 计算教师分配的单词数
-    let wordCount = 0
-    
-    // 只有当用户有具体分配的词库时才统计（不是'all'也不是null/undefined）
-    if (userSettings?.category && userSettings.category !== 'all' && userSettings.category !== null) {
-      // 分配了特定词库，统计该词库的单词数
-      assignedCategories.value = [userSettings.category]
-      const { count } = await supabaseAdmin
-        .from('words')
-        .select('*', { count: 'exact', head: true })
-        .eq('category', userSettings.category)
-      wordCount = count || 0
-    } else if (userSettings?.category === 'all') {
-      // 分配了全部词库，统计所有非custom的单词数
-      const { data: categories } = await supabaseAdmin
-        .from('words')
-        .select('category')
-        .neq('category', 'custom')
-      
-      const uniqueCategories = [...new Set(categories?.map(w => w.category) || [])]
-      assignedCategories.value = uniqueCategories
-      
-      // 统计所有非custom的单词数
-      const { count } = await supabaseAdmin
-        .from('words')
-        .select('*', { count: 'exact', head: true })
-        .neq('category', 'custom')
-      wordCount = count || 0
-    } else {
-      // 没有分配词库（category是null/undefined或不存在user_settings），不统计教师分配的单词
-      assignedCategories.value = []
-      wordCount = 0
-    }
-    
-    assignedWordsCount.value = wordCount
+    // 没有学习计划时，不显示教师分配的词库和单词数
+    assignedCategories.value = []
+    assignedWordsCount.value = 0
     
     // 获取个人词库单词数量 - 使用supabaseAdmin确保数据一致性
     const { count } = await supabaseAdmin
