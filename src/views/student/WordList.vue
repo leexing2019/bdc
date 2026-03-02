@@ -66,7 +66,7 @@
     </div>
     <div v-else class="space-y-2">
       <div
-        v-for="word in filteredWords"
+        v-for="word in paginatedWords"
         :key="word.id"
         class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer"
         :class="{'ring-2 ring-primary-500': selectedWords.includes(word.id)}"
@@ -144,11 +144,84 @@
 
 
       <!-- Empty State -->
-      <div v-if="filteredWords.length === 0" class="text-center py-16">
+      <div v-if="paginatedWords.length === 0" class="text-center py-16">
         <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
         <p class="text-sm text-gray-500">暂无单词</p>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="!loading && totalPages > 1" class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 pb-2">
+      <p class="text-xs text-gray-500 text-center sm:text-left whitespace-nowrap">
+        第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
+        （{{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filteredWords.length) }} / {{ filteredWords.length }}）
+      </p>
+      <div class="flex items-center gap-0.5">
+        <button
+          @click="currentPage = 1"
+          :disabled="currentPage === 1"
+          class="px-2 py-1.5 text-xs font-medium rounded border transition disabled:opacity-30 disabled:cursor-not-allowed"
+          :class="currentPage === 1
+            ? 'bg-gray-50 text-gray-400 border-gray-200'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          @click="currentPage = Math.max(1, currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-2 py-1.5 text-xs font-medium rounded border transition disabled:opacity-30 disabled:cursor-not-allowed"
+          :class="currentPage === 1
+            ? 'bg-gray-50 text-gray-400 border-gray-200'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <template v-for="(page, idx) in pageNumbers" :key="idx">
+          <button
+            v-if="typeof page === 'number'"
+            @click="currentPage = page"
+            class="w-7 h-7 text-xs font-medium rounded border transition"
+            :class="currentPage === page
+              ? 'bg-primary-600 text-white border-primary-600'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+          >
+            {{ page }}
+          </button>
+          <span v-else class="px-1 text-gray-400 text-xs">{{ page }}</span>
+        </template>
+
+        <button
+          @click="currentPage = Math.min(totalPages, currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-2 py-1.5 text-xs font-medium rounded border transition disabled:opacity-30 disabled:cursor-not-allowed"
+          :class="currentPage === totalPages
+            ? 'bg-gray-50 text-gray-400 border-gray-200'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <button
+          @click="currentPage = totalPages"
+          :disabled="currentPage === totalPages"
+          class="px-2 py-1.5 text-xs font-medium rounded border transition disabled:opacity-30 disabled:cursor-not-allowed"
+          :class="currentPage === totalPages
+            ? 'bg-gray-50 text-gray-400 border-gray-200'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -308,6 +381,10 @@ const editingWord = ref({})
 const selectedWords = ref([]) // 批量选择
 const loading = ref(true) // 加载状态
 
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10) // 每页显示 10 条
+
 // 页面加载时获取单词数据
 onMounted(async () => {
   loading.value = true
@@ -322,6 +399,12 @@ onMounted(async () => {
 // 切换标签时清除选择
 watch(() => activeTab.value, () => {
   selectedWords.value = []
+  currentPage.value = 1 // 重置页码
+})
+
+// 搜索时重置页码
+watch(() => searchQuery.value, () => {
+  currentPage.value = 1
 })
 
 
@@ -367,13 +450,63 @@ const filteredWords = computed(() => {
   // Filter by search
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    words = words.filter(word => 
+    words = words.filter(word =>
       word.spelling.toLowerCase().includes(query) ||
       word.meaning.toLowerCase().includes(query)
     )
   }
-  
+
   return words
+})
+
+// 总页数
+const totalPages = computed(() => {
+  const total = filteredWords.value.length
+  return Math.ceil(total / pageSize.value) || 1
+})
+
+// 当前页的单词数据
+const paginatedWords = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredWords.value.slice(start, end)
+})
+
+// 页码显示列表（用于分页控件）
+const pageNumbers = computed(() => {
+  const pages = []
+  const total = totalPages.value
+  const current = currentPage.value
+
+  // 总是显示第一页
+  if (current > 3) {
+    pages.push(1)
+    if (current > 4) {
+      pages.push('...')
+    }
+  }
+
+  // 显示当前页附近
+  for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+    pages.push(i)
+  }
+
+  // 总是显示最后一页
+  if (current < total - 2) {
+    if (current < total - 3) {
+      pages.push('...')
+    }
+    pages.push(total)
+  }
+
+  // 如果只有一页，也显示
+  if (total <= 5 && pages.length === 0) {
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  }
+
+  return pages
 })
 
 
