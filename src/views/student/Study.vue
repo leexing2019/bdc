@@ -738,13 +738,6 @@ const startStudy = () => {
   isSessionCompleted.value = false
   currentIndex.value = 0
   randomMode()
-  // 播放第一个单词的发音
-  nextTick(() => {
-    const word = wordStore.todayWords[currentIndex.value]
-    if (word) {
-      playPronunciation(word)
-    }
-  })
 }
 
 // 确认开始复习
@@ -754,13 +747,6 @@ const confirmReview = () => {
   isSessionCompleted.value = false
   currentIndex.value = 0
   randomMode()
-  // 播放第一个单词的发音
-  nextTick(() => {
-    const word = wordStore.todayWords[currentIndex.value]
-    if (word) {
-      playPronunciation(word)
-    }
-  })
 }
 
 const nextPreviewWord = () => {
@@ -777,13 +763,6 @@ const skipPreview = () => {
   isPreviewMode.value = false
   currentIndex.value = 0
   randomMode()
-  // 播放第一个单词的发音
-  nextTick(() => {
-    const word = wordStore.todayWords[currentIndex.value]
-    if (word) {
-      playPronunciation(word)
-    }
-  })
 }
 
 // Cache for example sentences
@@ -1003,7 +982,7 @@ const speakWithBrowser = (word) => {
 const handleResponse = async (quality) => {
   // 设置加载状态
   isTransitioning.value = true
-  
+
   // 记录统计
   sessionStats.value.total++
   if (quality >= 3) {
@@ -1011,28 +990,20 @@ const handleResponse = async (quality) => {
   } else {
     sessionStats.value.wrong++
   }
-  
+
   await wordStore.submitReview(quality)
   resetState()
   currentIndex.value++
-  
+
   // 检查是否完成，如果完成则不继续选择模式
   if (currentIndex.value >= wordStore.todayWords.length) {
     isSessionCompleted.value = true
     isTransitioning.value = false
     return
   }
-  
+
   // 切换到下一个单词时随机选择模式
   randomMode()
-
-  // 加载完成后自动播放新单词的发音
-  await nextTick()
-  // 显式传递当前单词对象，确保使用正确的单词和音频 URL
-  const word = wordStore.todayWords[currentIndex.value]
-  if (word) {
-    playPronunciation(word)
-  }
 
   // 加载完成
   isTransitioning.value = false
@@ -1137,7 +1108,7 @@ const nextWord = async () => {
   
   resetState()
   currentIndex.value++
-  
+
   // 检查是否完成，如果完成则记录学习时长
   if (currentIndex.value >= wordStore.todayWords.length) {
     await recordStudyDuration()
@@ -1145,17 +1116,9 @@ const nextWord = async () => {
     isTransitioning.value = false
     return
   }
-  
+
   // 切换到下一个单词时随机选择模式
   randomMode()
-
-  // 加载完成后自动播放新单词的发音
-  await nextTick()
-  // 显式传递当前单词对象，确保使用正确的单词和音频 URL
-  const word = wordStore.todayWords[currentIndex.value]
-  if (word) {
-    playPronunciation(word)
-  }
 
   // 加载完成
   isTransitioning.value = false
@@ -1193,13 +1156,6 @@ const continueStudy = async () => {
 
   // 随机选择模式
   randomMode()
-
-  // 加载完成后自动播放第一个单词的发音
-  await nextTick()
-  const word = wordStore.todayWords[currentIndex.value]
-  if (word) {
-    playPronunciation(word)
-  }
 
   // 设置为复习模式（不再获取新词）
   isReviewMode.value = true
