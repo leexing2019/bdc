@@ -996,9 +996,35 @@ export const useWordStore = defineStore('words', () => {
     const categories = activePlans.map(p => p.category)
     totalDailyLimit = activePlans.reduce((sum, p) => sum + p.daily_limit, 0)
     
-    // 如果没有设置学习计划或每日限制为0，直接返回空数组（不获取复习单词）
+    // 如果没有设置学习计划或每日限制为0，只返回复习单词（如果有的话）
     if (categories.length === 0 || totalDailyLimit === 0) {
-      return [] // 没有学习任务，返回空数组
+      // 获取今日待复习单词（不过滤词库，允许复习所有学过的单词）
+      const reviewWordsQuery = supabase
+        .from('user_word_progress')
+        .select(`*, word:words(category)`)
+        .eq('user_id', authStore.user.id)
+        .lte('next_review_date', today)
+        .order('next_review_date', { ascending: true })
+        .limit(50)
+
+      const { data: reviewWords } = await reviewWordsQuery
+
+      if (reviewWords?.length) {
+        return reviewWords.map(p => ({
+          ...p.word,
+          source: p.word.category === 'custom' ? 'custom' : 'institution',
+          progress: {
+            id: p.id,
+            ease_factor: p.ease_factor,
+            interval_days: p.interval_days,
+            repetitions: p.repetitions,
+            next_review_date: p.next_review_date,
+            proficiency: p.proficiency
+          },
+          isNew: false
+        }))
+      }
+      return [] // 没有复习单词，返回空数组
     }
     
     // 获取用户已学习的单词ID
