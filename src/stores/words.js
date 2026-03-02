@@ -271,18 +271,30 @@ export const useWordStore = defineStore('words', () => {
       }
       
       const today = new Date().toISOString().split('T')[0]
-      
-      // Get words due for review today
-      const { data: reviewWords, error: reviewError } = await supabase
+
+      // 获取需要复习的单词
+      let reviewWordsQuery = supabase
         .from('user_word_progress')
         .select(`
           *,
-          word:words(*)
+          word:words(category)
         `)
         .eq('user_id', authStore.user.id)
         .lte('next_review_date', today)
         .order('next_review_date', { ascending: true })
         .limit(50)
+
+      // 如果没有学习计划且只有个人词库任务，只获取个人词库的复习单词
+      if (!userSettings?.category || userSettings.category === '') {
+        // 只有个人词库任务，过滤掉其他词库
+        reviewWordsQuery = reviewWordsQuery.in('word.category', ['custom'])
+      } else if (userSettings?.category && userSettings.category !== 'all') {
+        // 有具体词库分配，只获取分配词库的复习单词
+        reviewWordsQuery = reviewWordsQuery.in('word.category', [userSettings.category, 'custom'])
+      }
+      // 如果 category 是'all'，则获取所有词库的复习单词
+
+      const { data: reviewWords, error: reviewError } = await reviewWordsQuery
 
       if (reviewError) {
         console.error('获取复习词失败:', reviewError)
@@ -1005,14 +1017,21 @@ export const useWordStore = defineStore('words', () => {
       }
     })
 
-    // 获取今日待复习单词
-    const { data: reviewWords } = await supabase
+    // 获取今日待复习单词（根据学习计划的词库分类过滤）
+    let reviewWordsQuery = supabase
       .from('user_word_progress')
-      .select(`*, word:words(*)`)
+      .select(`*, word:words(category)`)
       .eq('user_id', authStore.user.id)
       .lte('next_review_date', today)
       .order('next_review_date', { ascending: true })
       .limit(50)
+
+    // 只获取学习计划中包含的词库的复习单词
+    if (categories.length > 0 && !categories.includes('all')) {
+      reviewWordsQuery = reviewWordsQuery.in('word.category', categories)
+    }
+
+    const { data: reviewWords } = await reviewWordsQuery
 
     if (reviewWords?.length) {
       resultWords.push(...reviewWords.map(p => ({
