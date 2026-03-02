@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(python3:*)",
+      "Bash(git add src/views/student/Study.vue)",
+      "Bash(git commit:*)",
+      "Bash(git push origin master)",
+      "Bash(git remote set-url origin git@github.com:leexing2019/bdc.git)",
+      "Bash(git remote set-url origin https://github.com/leexing2019/bdc.git)"
+    ]
+  }
+}
