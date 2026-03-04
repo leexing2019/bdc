@@ -277,7 +277,7 @@ export const useWordStore = defineStore('words', () => {
         .from('user_word_progress')
         .select(`
           *,
-          word:words(category)
+          word:words(*)
         `)
         .eq('user_id', authStore.user.id)
         .lte('next_review_date', today)
@@ -301,7 +301,7 @@ export const useWordStore = defineStore('words', () => {
       // Get user's learned word IDs
       const { data: allProgress } = await supabase
         .from('user_word_progress')
-        .select('word_id, word:words(category)')
+        .select('word_id, word:words(*)')
         .eq('user_id', authStore.user.id)
       
       // 分类已学习单词ID
@@ -1001,7 +1001,7 @@ export const useWordStore = defineStore('words', () => {
       // 获取今日待复习单词（不过滤词库，允许复习所有学过的单词）
       const reviewWordsQuery = supabase
         .from('user_word_progress')
-        .select(`*, word:words(category)`)
+        .select(`*, word:words(*)`)
         .eq('user_id', authStore.user.id)
         .lte('next_review_date', today)
         .order('next_review_date', { ascending: true })
@@ -1030,7 +1030,7 @@ export const useWordStore = defineStore('words', () => {
     // 获取用户已学习的单词ID
     const { data: allProgress } = await supabase
       .from('user_word_progress')
-      .select('word_id, word:words(category)')
+      .select('word_id, word:words(*)')
       .eq('user_id', authStore.user.id)
     
     const learnedWordIds = new Set()
@@ -1048,7 +1048,7 @@ export const useWordStore = defineStore('words', () => {
     // 获取今日待复习单词（根据学习计划的词库分类过滤）
     let reviewWordsQuery = supabase
       .from('user_word_progress')
-      .select(`*, word:words(category)`)
+      .select(`*, word:words(*)`)
       .eq('user_id', authStore.user.id)
       .lte('next_review_date', today)
       .order('next_review_date', { ascending: true })
