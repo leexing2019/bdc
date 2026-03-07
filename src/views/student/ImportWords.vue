@@ -687,6 +687,32 @@ const defaultPartOfSpeechOptions = [
   { value: 'int.', label: '感叹词 (int.)' }
 ]
 
+// 常见国家名称列表（允许专有名词）
+const commonCountries = [
+  'afghanistan', 'albania', 'algeria', 'andorra', 'angola', 'antigua and barbuda', 'argentina', 'armenia', 'australia', 'austria',
+  'azerbaijan', 'bahamas', 'bahrain', 'bangladesh', 'barbados', 'belarus', 'belgium', 'belize', 'benin', 'bhutan',
+  'bolivia', 'bosnia and herzegovina', 'botswana', 'brazil', 'brunei darussalam', 'bulgaria', 'burkina faso', 'burundi', 'cabo verde', 'cambodia',
+  'cameroon', 'canada', 'central african republic', 'chad', 'chile', 'china', 'colombia', 'comoros', 'congo', 'costa rica',
+  'croatia', 'cuba', 'cyprus', 'czechia', 'democratic republic of the congo', 'denmark', 'djibouti', 'dominica', 'dominican republic', 'ecuador',
+  'egypt', 'el salvador', 'equatorial guinea', 'eritrea', 'estonia', 'eswatini', 'ethiopia', 'fiji', 'finland', 'france',
+  'gabon', 'gambia', 'georgia', 'germany', 'ghana', 'greece', 'grenada', 'guatemala', 'guinea', 'guinea-bissau',
+  'guyana', 'haiti', 'honduras', 'hungary', 'iceland', 'india', 'indonesia', 'iran', 'iraq', 'ireland',
+  'israel', 'italy', 'ivory coast', 'jamaica', 'japan', 'jordan', 'kazakhstan', 'kenya', 'kiribati', 'kosovo',
+  'kuwait', 'kyrgyzstan', 'laos', 'latvia', 'lebanon', 'lesotho', 'liberia', 'libya', 'liechtenstein', 'lithuania',
+  'luxembourg', 'madagascar', 'malawi', 'malaysia', 'maldives', 'mali', 'malta', 'marshall islands', 'mauritania', 'mauritius',
+  'mexico', 'micronesia', 'moldova', 'monaco', 'mongolia', 'montenegro', 'morocco', 'mozambique', 'myanmar', 'namibia',
+  'nauru', 'nepal', 'netherlands', 'new zealand', 'nicaragua', 'niger', 'nigeria', 'north korea', 'north macedonia', 'norway',
+  'oman', 'pakistan', 'palau', 'palestine', 'panama', 'papua new guinea', 'paraguay', 'peru', 'philippines', 'poland',
+  'portugal', 'qatar', 'romania', 'russia', 'rwanda', 'saint kitts and nevis', 'saint lucia', 'saint vincent and the grenadines', 'samoa', 'san marino',
+  'sao tome and principe', 'saudi arabia', 'senegal', 'serbia', 'seychelles', 'sierra leone', 'singapore', 'slovakia', 'slovenia', 'solomon islands',
+  'somalia', 'south africa', 'south korea', 'south sudan', 'spain', 'sri lanka', 'sudan', 'suriname', 'sweden', 'switzerland',
+  'syria', 'tajikistan', 'tanzania', 'thailand', 'timor-leste', 'togo', 'tonga', 'trinidad and tobago', 'tunisia', 'turkey',
+  'turkmenistan', 'tuvalu', 'uganda', 'ukraine', 'united arab emirates', 'united kingdom', 'united states', 'uruguay', 'uzbekistan', 'vanuatu',
+  'vatican city', 'venezuela', 'vietnam', 'yemen', 'zambia', 'zimbabwe',
+  'america', 'united states of america',
+  'people\'s republic of china', 'republic of korea', 'democratic people\'s republic of korea'
+]
+
 // 动态词性选项
 const dynamicPartOfSpeechOptions = ref([])
 
@@ -1592,13 +1618,13 @@ const validateWordsListWithApi = async (words, startIndex = 0) => {
     
     const cleanWord = spelling.toLowerCase()
     
-    if (!/^[a-z\s\-]+$/.test(cleanWord)) {
+    if (!/^[a-z\s\-']+$/.test(cleanWord)) {
       results.push({ ...word, valid: false, reason: '包含非法字符' })
       continue
     }
     
-    if (/[-]{2,}/.test(cleanWord)) {
-      results.push({ ...word, valid: false, reason: '包含连续连字符' })
+    if (/[-']{2,}/.test(cleanWord)) {
+      results.push({ ...word, valid: false, reason: '包含连续特殊字符' })
       continue
     }
     
@@ -1616,11 +1642,21 @@ const validateWordsListWithApi = async (words, startIndex = 0) => {
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
       
       if (response.status === 404 || !response.ok) {
-        results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        // API 未找到，检查是否是国家名称
+        if (commonCountries.includes(cleanWord)) {
+          results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+        } else {
+          results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        }
       } else {
         const data = await response.json()
         if (!data || !data[0] || !data[0].meanings || data[0].meanings.length === 0) {
-          results.push({ ...word, valid: false, reason: '字典中未找到' })
+          // API 返回空结果，检查是否是国家名称
+          if (commonCountries.includes(cleanWord)) {
+            results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+          } else {
+            results.push({ ...word, valid: false, reason: '字典中未找到' })
+          }
         } else {
           results.push({ ...word, valid: true, phonetic: data[0].phonetic || null })
         }
@@ -1702,14 +1738,14 @@ const validateWordsList = async (words) => {
     const cleanWord = spelling.toLowerCase()
     
     // 基本格式验证（允许空格和连字符）
-    if (!/^[a-z\s\-]+$/.test(cleanWord)) {
+    if (!/^[a-z\s\-']+$/.test(cleanWord)) {
       results.push({ ...word, valid: false, reason: '包含非法字符' })
       continue
     }
     
     // 检查是否有连续的特殊字符
-    if (/[-]{2,}/.test(cleanWord)) {
-      results.push({ ...word, valid: false, reason: '包含连续连字符' })
+    if (/[-']{2,}/.test(cleanWord)) {
+      results.push({ ...word, valid: false, reason: '包含连续特殊字符' })
       continue
     }
     
@@ -1729,11 +1765,21 @@ const validateWordsList = async (words) => {
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
       
       if (response.status === 404 || !response.ok) {
-        results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        // API 未找到，检查是否是国家名称
+        if (commonCountries.includes(cleanWord)) {
+          results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+        } else {
+          results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        }
       } else {
         const data = await response.json()
         if (!data || !data[0] || !data[0].meanings || data[0].meanings.length === 0) {
-          results.push({ ...word, valid: false, reason: '字典中未找到' })
+          // API 返回空结果，检查是否是国家名称
+          if (commonCountries.includes(cleanWord)) {
+            results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+          } else {
+            results.push({ ...word, valid: false, reason: '字典中未找到' })
+          }
         } else {
           results.push({ ...word, valid: true, phonetic: data[0].phonetic || null })
         }
@@ -1780,13 +1826,13 @@ const saveAndRevalidateWord = async (index) => {
   const cleanWord = newSpelling.toLowerCase()
   
   // 基本格式验证
-  if (!/^[a-z\-]+$/.test(cleanWord)) {
+  if (!/^[a-z\-']+$/.test(cleanWord)) {
     alert('单词只允许包含字母和连字符')
     return
   }
   
-  if (/[-]{2,}/.test(cleanWord)) {
-    alert('单词不能包含连续连字符')
+  if (/[-']{2,}/.test(cleanWord)) {
+    alert('单词不能包含连续特殊字符')
     return
   }
   

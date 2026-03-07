@@ -8,6 +8,32 @@ const API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en'
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 const DEEPSEEK_MODEL = 'deepseek-chat'
 
+// 常见国家名称列表（允许专有名词）
+const commonCountries = [
+  'afghanistan', 'albania', 'algeria', 'andorra', 'angola', 'antigua and barbuda', 'argentina', 'armenia', 'australia', 'austria',
+  'azerbaijan', 'bahamas', 'bahrain', 'bangladesh', 'barbados', 'belarus', 'belgium', 'belize', 'benin', 'bhutan',
+  'bolivia', 'bosnia and herzegovina', 'botswana', 'brazil', 'brunei darussalam', 'bulgaria', 'burkina faso', 'burundi', 'cabo verde', 'cambodia',
+  'cameroon', 'canada', 'central african republic', 'chad', 'chile', 'china', 'colombia', 'comoros', 'congo', 'costa rica',
+  'croatia', 'cuba', 'cyprus', 'czechia', 'democratic republic of the congo', 'denmark', 'djibouti', 'dominica', 'dominican republic', 'ecuador',
+  'egypt', 'el salvador', 'equatorial guinea', 'eritrea', 'estonia', 'eswatini', 'ethiopia', 'fiji', 'finland', 'france',
+  'gabon', 'gambia', 'georgia', 'germany', 'ghana', 'greece', 'grenada', 'guatemala', 'guinea', 'guinea-bissau',
+  'guyana', 'haiti', 'honduras', 'hungary', 'iceland', 'india', 'indonesia', 'iran', 'iraq', 'ireland',
+  'israel', 'italy', 'ivory coast', 'jamaica', 'japan', 'jordan', 'kazakhstan', 'kenya', 'kiribati', 'kosovo',
+  'kuwait', 'kyrgyzstan', 'laos', 'latvia', 'lebanon', 'lesotho', 'liberia', 'libya', 'liechtenstein', 'lithuania',
+  'luxembourg', 'madagascar', 'malawi', 'malaysia', 'maldives', 'mali', 'malta', 'marshall islands', 'mauritania', 'mauritius',
+  'mexico', 'micronesia', 'moldova', 'monaco', 'mongolia', 'montenegro', 'morocco', 'mozambique', 'myanmar', 'namibia',
+  'nauru', 'nepal', 'netherlands', 'new zealand', 'nicaragua', 'niger', 'nigeria', 'north korea', 'north macedonia', 'norway',
+  'oman', 'pakistan', 'palau', 'palestine', 'panama', 'papua new guinea', 'paraguay', 'peru', 'philippines', 'poland',
+  'portugal', 'qatar', 'romania', 'russia', 'rwanda', 'saint kitts and nevis', 'saint lucia', 'saint vincent and the grenadines', 'samoa', 'san marino',
+  'sao tome and principe', 'saudi arabia', 'senegal', 'serbia', 'seychelles', 'sierra leone', 'singapore', 'slovakia', 'slovenia', 'solomon islands',
+  'somalia', 'south africa', 'south korea', 'south sudan', 'spain', 'sri lanka', 'sudan', 'suriname', 'sweden', 'switzerland',
+  'syria', 'tajikistan', 'tanzania', 'thailand', 'timor-leste', 'togo', 'tonga', 'trinidad and tobago', 'tunisia', 'turkey',
+  'turkmenistan', 'tuvalu', 'uganda', 'ukraine', 'united arab emirates', 'united kingdom', 'united states', 'uruguay', 'uzbekistan', 'vanuatu',
+  'vatican city', 'venezuela', 'vietnam', 'yemen', 'zambia', 'zimbabwe',
+  'america', 'united states of america',
+  'people\'s republic of china', 'republic of korea', 'democratic people\'s republic of korea'
+]
+
 /**
  * Test DeepSeek API connectivity
  * @param {string} apiKey - DeepSeek API key
@@ -196,6 +222,12 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
     if (!response.ok) {
       // Word not found or API error (including 429 rate limit)
       console.warn(`Dictionary API error for ${cleanWord}: ${response.status}`)
+
+      // 检查是否是国家名称（使用原始输入）
+      if (commonCountries.includes(originalWord)) {
+        return { definition: '国家名称', example: null, phonetic: null, audio: null, exampleSource: null, isCountry: true }
+      }
+
       // Try DeepSeek if API key provided
       if (deepseekApiKey) {
         // 使用原始输入词生成例句，带上词性信息
@@ -209,6 +241,11 @@ export async function fetchWordData(word, deepseekApiKey = null, partOfSpeech = 
 
     if (!data || !data[0]) {
       // No data returned
+      // 检查是否是国家名称（使用原始输入）
+      if (commonCountries.includes(originalWord)) {
+        return { definition: '国家名称', example: null, phonetic: null, audio: null, exampleSource: null, isCountry: true }
+      }
+
       if (deepseekApiKey) {
         const example = await generateExampleWithDeepSeek(originalWord, null, deepseekApiKey, targetPOS)
         return { definition: null, example: example, phonetic: null, audio: null, exampleSource: example ? 'deepseek' : null }

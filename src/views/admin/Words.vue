@@ -1139,6 +1139,32 @@ const doCategoryImportWithValidation = async () => {
   }
 }
 
+// 常见国家名称列表（允许专有名词）
+const commonCountries = [
+  'afghanistan', 'albania', 'algeria', 'andorra', 'angola', 'antigua and barbuda', 'argentina', 'armenia', 'australia', 'austria',
+  'azerbaijan', 'bahamas', 'bahrain', 'bangladesh', 'barbados', 'belarus', 'belgium', 'belize', 'benin', 'bhutan',
+  'bolivia', 'bosnia and herzegovina', 'botswana', 'brazil', 'brunei darussalam', 'bulgaria', 'burkina faso', 'burundi', 'cabo verde', 'cambodia',
+  'cameroon', 'canada', 'central african republic', 'chad', 'chile', 'china', 'colombia', 'comoros', 'congo', 'costa rica',
+  'croatia', 'cuba', 'cyprus', 'czechia', 'democratic republic of the congo', 'denmark', 'djibouti', 'dominica', 'dominican republic', 'ecuador',
+  'egypt', 'el salvador', 'equatorial guinea', 'eritrea', 'estonia', 'eswatini', 'ethiopia', 'fiji', 'finland', 'france',
+  'gabon', 'gambia', 'georgia', 'germany', 'ghana', 'greece', 'grenada', 'guatemala', 'guinea', 'guinea-bissau',
+  'guyana', 'haiti', 'honduras', 'hungary', 'iceland', 'india', 'indonesia', 'iran', 'iraq', 'ireland',
+  'israel', 'italy', 'ivory coast', 'jamaica', 'japan', 'jordan', 'kazakhstan', 'kenya', 'kiribati', 'kosovo',
+  'kuwait', 'kyrgyzstan', 'laos', 'latvia', 'lebanon', 'lesotho', 'liberia', 'libya', 'liechtenstein', 'lithuania',
+  'luxembourg', 'madagascar', 'malawi', 'malaysia', 'maldives', 'mali', 'malta', 'marshall islands', 'mauritania', 'mauritius',
+  'mexico', 'micronesia', 'moldova', 'monaco', 'mongolia', 'montenegro', 'morocco', 'mozambique', 'myanmar', 'namibia',
+  'nauru', 'nepal', 'netherlands', 'new zealand', 'nicaragua', 'niger', 'nigeria', 'north korea', 'north macedonia', 'norway',
+  'oman', 'pakistan', 'palau', 'palestine', 'panama', 'papua new guinea', 'paraguay', 'peru', 'philippines', 'poland',
+  'portugal', 'qatar', 'romania', 'russia', 'rwanda', 'saint kitts and nevis', 'saint lucia', 'saint vincent and the grenadines', 'samoa', 'san marino',
+  'sao tome and principe', 'saudi arabia', 'senegal', 'serbia', 'seychelles', 'sierra leone', 'singapore', 'slovakia', 'slovenia', 'solomon islands',
+  'somalia', 'south africa', 'south korea', 'south sudan', 'spain', 'sri lanka', 'sudan', 'suriname', 'sweden', 'switzerland',
+  'syria', 'tajikistan', 'tanzania', 'thailand', 'timor-leste', 'togo', 'tonga', 'trinidad and tobago', 'tunisia', 'turkey',
+  'turkmenistan', 'tuvalu', 'uganda', 'ukraine', 'united arab emirates', 'united kingdom', 'united states', 'uruguay', 'uzbekistan', 'vanuatu',
+  'vatican city', 'venezuela', 'vietnam', 'yemen', 'zambia', 'zimbabwe',
+  'america', 'united states of america',
+  'people\'s republic of china', 'republic of korea', 'democratic people\'s republic of korea'
+]
+
 // 常见短语动词列表（允许包含空格的词组）
 const commonPhrasalVerbs = [
   'allude to', 'amount to', 'appeal to', 'apply to', 'approve of',
@@ -1208,13 +1234,13 @@ const validateWordSpelling = async (word) => {
   
   const cleanWord = word.trim().toLowerCase()
   
-  // 检查是否包含非法字符（只允许字母、空格和连字符）
-  if (!/^[a-z\s\-]+$/.test(cleanWord)) {
+  // 检查是否包含非法字符（只允许字母、空格、连字符和撇号）
+  if (!/^[a-z\s\-']+$/.test(cleanWord)) {
     return { valid: false, reason: '包含非法字符', original: word }
   }
-  
+
   // 检查是否有连续的特殊字符
-  if (/[-]{2,}/.test(cleanWord)) {
+  if (/[-']{2,}/.test(cleanWord)) {
     return { valid: false, reason: '包含连续连字符', original: word }
   }
   
@@ -1223,8 +1249,12 @@ const validateWordSpelling = async (word) => {
     return { valid: false, reason: '以连字符开头或结尾', original: word }
   }
   
-  // 检查是否包含空格（可能是短语动词）
+  // 检查是否包含空格（可能是短语动词或国家名称）
   if (cleanWord.includes(' ')) {
+    // 检查是否是常见国家名称
+    if (commonCountries.includes(cleanWord)) {
+      return { valid: true, original: word, isCountry: true, warning: '国家名称' }
+    }
     // 检查是否是常见的短语动词
     if (commonPhrasalVerbs.includes(cleanWord)) {
       return { valid: true, original: word, isPhrasalVerb: true, warning: '短语动词' }
@@ -1305,16 +1335,16 @@ const validateWordsList = async (words, categoryForValidation = null) => {
     }
     
     const cleanWord = spelling.toLowerCase()
-    
-    // 基本格式验证（允许空格和连字符）
-    if (!/^[a-z\s\-]+$/.test(cleanWord)) {
+
+    // 基本格式验证（允许空格、连字符和撇号）
+    if (!/^[a-z\s\-']+$/.test(cleanWord)) {
       results.push({ ...word, valid: false, reason: '包含非法字符' })
       continue
     }
-    
+
     // 检查是否有连续的特殊字符
-    if (/[-]{2,}/.test(cleanWord)) {
-      results.push({ ...word, valid: false, reason: '包含连续连字符' })
+    if (/[-']{2,}/.test(cleanWord)) {
+      results.push({ ...word, valid: false, reason: '包含连续特殊字符' })
       continue
     }
     
@@ -1331,8 +1361,13 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       continue
     }
     
-    // 检查是否包含空格（可能是短语动词）
+    // 检查是否包含空格（可能是短语动词或国家名称）
     if (cleanWord.includes(' ')) {
+      // 检查是否是常见国家名称
+      if (commonCountries.includes(cleanWord)) {
+        results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+        continue
+      }
       // 检查是否是常见的短语动词
       if (commonPhrasalVerbs.includes(cleanWord)) {
         results.push({ ...word, valid: true, phonetic: null, isPhrasalVerb: true })
@@ -1364,11 +1399,21 @@ const validateWordsList = async (words, categoryForValidation = null) => {
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
       
       if (response.status === 404 || !response.ok) {
-        results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        // API 未找到，检查是否是国家名称
+        if (commonCountries.includes(cleanWord)) {
+          results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+        } else {
+          results.push({ ...word, valid: false, reason: '字典中未找到（拼写错误）' })
+        }
       } else {
         const data = await response.json()
         if (!data || !data[0] || !data[0].meanings || data[0].meanings.length === 0) {
-          results.push({ ...word, valid: false, reason: '字典中未找到' })
+          // API 返回空结果，检查是否是国家名称
+          if (commonCountries.includes(cleanWord)) {
+            results.push({ ...word, valid: true, phonetic: null, isCountry: true })
+          } else {
+            results.push({ ...word, valid: false, reason: '字典中未找到' })
+          }
         } else {
           results.push({ ...word, valid: true, phonetic: data[0].phonetic || null })
         }
@@ -1451,16 +1496,16 @@ const saveAndRevalidateWord = async (index) => {
   }
   
   const cleanWord = newSpelling.toLowerCase()
-  
-  // 基本格式验证
-  if (!/^[a-z\-]+$/.test(cleanWord)) {
-    alert('单词只允许包含字母和连字符')
+
+  // 基本格式验证（允许字母、空格、连字符和撇号）
+  if (!/^[a-z\s\-']+$/.test(cleanWord)) {
+    alert('单词只允许包含字母、空格、连字符和撇号')
     return
   }
-  
+
   // 检查是否有连续的特殊字符
-  if (/[-]{2,}/.test(cleanWord)) {
-    alert('单词不能包含连续连字符')
+  if (/[-']{2,}/.test(cleanWord)) {
+    alert('单词不能包含连续特殊字符')
     return
   }
   
@@ -1484,12 +1529,17 @@ const saveAndRevalidateWord = async (index) => {
   try {
     let isValidWord = true
     let isPhrasalVerb = false
+    let isCountry = false
     let phonetic = null
     
-    // 检查是否包含空格（可能是短语动词）
+    // 检查是否包含空格（可能是短语动词或国家名称）
     if (cleanWord.includes(' ')) {
+      // 检查是否是常见国家名称
+      if (commonCountries.includes(cleanWord)) {
+        isCountry = true
+      }
       // 检查是否是常见的短语动词
-      if (commonPhrasalVerbs.includes(cleanWord)) {
+      else if (commonPhrasalVerbs.includes(cleanWord)) {
         isPhrasalVerb = true
       } else {
         // 尝试验证短语中的主要动词
@@ -1506,11 +1556,21 @@ const saveAndRevalidateWord = async (index) => {
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
       
       if (response.status === 404 || !response.ok) {
-        isValidWord = false
+        // 检查是否是国家名称
+        if (commonCountries.includes(cleanWord)) {
+          isCountry = true
+        } else {
+          isValidWord = false
+        }
       } else {
         const data = await response.json()
         if (!data || !data[0] || !data[0].meanings || data[0].meanings.length === 0) {
-          isValidWord = false
+          // 检查是否是国家名称
+          if (commonCountries.includes(cleanWord)) {
+            isCountry = true
+          } else {
+            isValidWord = false
+          }
         } else {
           phonetic = data[0].phonetic || null
         }
@@ -1890,16 +1950,16 @@ const saveWord = async () => {
     return
   }
   
-  // 基本格式验证（允许空格和连字符）
+  // 基本格式验证（允许空格、连字符和撇号）
   const cleanWord = spelling.toLowerCase()
-  if (!/^[a-z\s\-]+$/.test(cleanWord)) {
-    alert('单词只允许包含字母、空格和连字符')
+  if (!/^[a-z\s\-']+$/.test(cleanWord)) {
+    alert('单词只允许包含字母、空格、连字符和撇号')
     return
   }
-  
+
   // 检查是否有连续的特殊字符
-  if (/[-]{2,}/.test(cleanWord)) {
-    alert('单词不能包含连续连字符')
+  if (/[-']{2,}/.test(cleanWord)) {
+    alert('单词不能包含连续特殊字符')
     return
   }
   
@@ -1927,11 +1987,16 @@ const saveWord = async () => {
     // 直接验证单词拼写，不弹窗询问
     let isValidWord = true
     let isPhrasalVerb = false
-    
-    // 检查是否包含空格（可能是短语动词）
+    let isCountry = false
+
+    // 检查是否包含空格（可能是短语动词或国家名称）
     if (cleanWord.includes(' ')) {
+      // 检查是否是常见国家名称
+      if (commonCountries.includes(cleanWord)) {
+        isCountry = true
+      }
       // 检查是否是常见的短语动词
-      if (commonPhrasalVerbs.includes(cleanWord)) {
+      else if (commonPhrasalVerbs.includes(cleanWord)) {
         isPhrasalVerb = true
       } else {
         // 尝试验证短语中的主要动词
@@ -1946,24 +2011,36 @@ const saveWord = async () => {
       // 验证单个单词
       const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
       const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(cleanWord)}`)
-      
+
       if (response.status === 404) {
-        isValidWord = false
+        // 检查是否是国家名称
+        if (commonCountries.includes(cleanWord)) {
+          isCountry = true
+        } else {
+          isValidWord = false
+        }
       } else if (response.ok) {
         const data = await response.json()
         if (!data || !data[0] || !data[0].meanings || data[0].meanings.length === 0) {
-          isValidWord = false
+          // 检查是否是国家名称
+          if (commonCountries.includes(cleanWord)) {
+            isCountry = true
+          } else {
+            isValidWord = false
+          }
         }
       } else {
         isValidWord = false
       }
     }
-    
+
     // 直接弹窗显示验证结果
-    if (!isValidWord) {
+    if (!isValidWord && !isCountry) {
       alert(`❌ 单词 "${cleanWord}" 验证失败：在字典中未找到该单词，请检查拼写是否正确`)
       saving.value = false
       return
+    } else if (isCountry) {
+      alert(`✅ 单词 "${cleanWord}" 验证通过！（国家名称）`)
     } else if (isPhrasalVerb) {
       alert(`✅ 单词 "${cleanWord}" 验证通过！（短语动词）`)
     } else {

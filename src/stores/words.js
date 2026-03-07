@@ -632,20 +632,21 @@ export const useWordStore = defineStore('words', () => {
     }
 
     const cleanWord = word.trim().toLowerCase()
-    
+
     // 使用 Dictionary API 验证
     const result = await fetchWordData(cleanWord)
-    
-    if (result.definition || result.phonetic) {
-      return { 
-        valid: true, 
-        message: '单词拼写正确',
+
+    if (result.definition || result.phonetic || result.isCountry) {
+      return {
+        valid: true,
+        message: result.isCountry ? '国家名称' : '单词拼写正确',
         phonetic: result.phonetic,
-        definition: result.definition
+        definition: result.definition,
+        isCountry: result.isCountry || false
       }
     } else {
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         message: `无法确认单词 "${cleanWord}" 的拼写是否正确，请检查后重试`
       }
     }
@@ -705,10 +706,10 @@ export const useWordStore = defineStore('words', () => {
         
         // 无论是否有例句，都需要传递词性参数来验证和获取音标/音频
         const wordValidation = await fetchWordData(word.spelling.trim(), null, word.partOfSpeech || null)
-        
-        // 检查单词是否有效（必须有 definition 或 phonetic）
-        const isValidWord = !!(wordValidation.definition || wordValidation.phonetic)
-        
+
+        // 检查单词是否有效（必须有 definition 或 phonetic，或者是国家名称）
+        const isValidWord = !!(wordValidation.definition || wordValidation.phonetic || wordValidation.isCountry)
+
         if (!isValidWord) {
           // 单词拼写无效，记录为无效并跳过添加
           results.invalid.push(word.spelling)
